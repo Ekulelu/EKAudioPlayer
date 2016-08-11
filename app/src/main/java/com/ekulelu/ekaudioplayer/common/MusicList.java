@@ -2,42 +2,76 @@ package com.ekulelu.ekaudioplayer.common;
 
 import android.content.Context;
 import android.support.annotation.Nullable;
+import android.support.v7.widget.DefaultItemAnimator;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.util.AttributeSet;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.TextView;
 
+import com.ekulelu.ekaudioplayer.Model.MusicModel;
 import com.ekulelu.ekaudioplayer.util.ContextUtil;
 import com.ekulelu.ekaudioplayer.R;
+
+import java.util.ArrayList;
 
 
 /**
  * Created by aahu on 2016/8/11 0011.
  */
-
+//TODO 进一步封装
 
 public class MusicList extends RecyclerView{
 
-    String[] mData = {"qqqq","wwww","eeee"};
+
+    public ArrayList<MusicModel> getmData() {
+        return mData;
+    }
+
+    public void setmData(ArrayList<MusicModel> mData) {
+        this.mData = mData;
+    }
+
+    ArrayList<MusicModel> mData = new ArrayList<MusicModel>();
 
     public MusicList(Context context) {
         super(context);
-        setLayoutManager(new LinearLayoutManager(ContextUtil.getInstance()));
-        setAdapter(new MusicListAdapter());
-
+        init();
     }
+
+
+
 
     public MusicList(Context context, @Nullable AttributeSet attrs) {
         super(context, attrs);
+        init();
+    }
+
+    private void init(){
+
         setLayoutManager(new LinearLayoutManager(ContextUtil.getInstance()));
         setAdapter(new MusicListAdapter());
         addItemDecoration(new DividerItemDecoration(DividerItemDecoration.VERTICAL_LIST));
+        setItemAnimator( new DefaultItemAnimator());
     }
 
-    class MusicListAdapter extends RecyclerView.Adapter<MusicListAdapter.MyViewHolder>{
+
+
+    public interface OnItemClickLitener {
+        void onItemClick(View view, int position);
+        void onItemLongClick(View view , int position);
+    }
+
+    public class MusicListAdapter extends RecyclerView.Adapter<MusicListAdapter.MyViewHolder>{
+
+        private OnItemClickLitener mOnItemClickLitener;
+
+        public void setmOnItemClickLitener(OnItemClickLitener mOnItemClickLitener) {
+            this.mOnItemClickLitener = mOnItemClickLitener;
+        }
 
         @Override
         public MyViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
@@ -47,20 +81,41 @@ public class MusicList extends RecyclerView{
         }
 
         @Override
-        public void onBindViewHolder(MyViewHolder holder, int position) {
-            holder.mTv.setText(mData[position%3]);
+        public void onBindViewHolder(final MyViewHolder holder, int position) {
+            holder.mTv.setText(mData.get(position).getTitle());
+
+            if(mOnItemClickLitener != null) {
+                holder.itemView.setOnClickListener(new OnClickListener() {
+                    @Override
+                    public void onClick(View view) {
+                        int pos = holder.getLayoutPosition();
+                        mOnItemClickLitener.onItemClick(view, pos);
+                    }
+                });
+
+                holder.itemView.setOnLongClickListener(new OnLongClickListener() {
+                    @Override
+                    public boolean onLongClick(View view) {
+                        int pos = holder.getLayoutPosition();
+                        mOnItemClickLitener.onItemLongClick(view, pos);
+                        return false;
+                    }
+                });
+            }
         }
 
         @Override
         public int getItemCount() {
-            return mData.length * 13;
+            return mData.size();
         }
 
         class MyViewHolder extends RecyclerView.ViewHolder {
             TextView mTv;
+            Button mBtn;
             public MyViewHolder(View view) {
                 super(view);
                 mTv = (TextView) view.findViewById(R.id.text_view_music_title);
+                mBtn = (Button) view.findViewById(R.id.btn_item);
 
             }
         }

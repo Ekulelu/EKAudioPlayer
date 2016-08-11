@@ -24,9 +24,16 @@ public class MyToast {
      * @param message
      * @param duration
      */
-    public static void show(CharSequence message, int duration)
+    public static void show(int message, int duration)
     {
-        Toast.makeText(ContextUtil.getInstance(), message, duration).show();
+        Toast.makeText(ContextUtil.getInstance(), "" + message, duration).show();
     }
 
+    public static void showShortText(int string) {
+        Toast.makeText(ContextUtil.getInstance(), "" + string,Toast.LENGTH_SHORT).show();
+    }
+
+    public static void showLongText(int string) {
+        Toast.makeText(ContextUtil.getInstance(), "" + string, Toast.LENGTH_LONG).show();
+    }
 }

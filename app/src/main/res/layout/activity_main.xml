@@ -27,7 +27,7 @@
                 android:src="@mipmap/add"
                 android:background="@color/color_transparency"
                 android:layout_marginTop="@dimen/image_button_margin_top"
-                />
+                android:visibility="gone" />
         </RelativeLayout>
 
     </android.support.v7.widget.Toolbar>

@@ -26,7 +26,7 @@ public class DividerItemDecoration extends RecyclerView.ItemDecoration{
 
     public static final int VERTICAL_LIST = LinearLayoutManager.VERTICAL;
 
-    public static final int HEIGHT = 2;
+    public static final int HEIGHT = 1;
 
     public static final int WIDTH = 2;
 
@@ -39,6 +39,7 @@ public class DividerItemDecoration extends RecyclerView.ItemDecoration{
         mDivider = a.getDrawable(0);
         a.recycle();
         setOrientation(orientation);
+        mDivider.setColorFilter(ContextUtil.getInstance().getResources().getColor(R.color.color_divider_bg), PorterDuff.Mode.ADD);
     }
 
     public void setOrientation(int orientation) {
@@ -69,9 +70,8 @@ public class DividerItemDecoration extends RecyclerView.ItemDecoration{
             final View child = parent.getChildAt(i);
             final RecyclerView.LayoutParams params = (RecyclerView.LayoutParams) child.getLayoutParams();
             final int top = child.getBottom() + params.bottomMargin;
-            final int bottom = top + WIDTH;
+            final int bottom = top + HEIGHT;
             mDivider.setBounds(left, top, right, bottom);
-            mDivider.setColorFilter(ContextUtil.getInstance().getResources().getColor(R.color.color_divider_bg), PorterDuff.Mode.ADD);
             mDivider.draw(c);
         }
     }
@@ -85,22 +85,12 @@ public class DividerItemDecoration extends RecyclerView.ItemDecoration{
             final View child = parent.getChildAt(i);
             final RecyclerView.LayoutParams params = (RecyclerView.LayoutParams) child.getLayoutParams();
             final int left = child.getRight() + params.rightMargin;
-            final int right = left + HEIGHT;
+            final int right = left + WIDTH;
             mDivider.setBounds(left, top, right, bottom);
-
             mDivider.draw(c);
         }
     }
 
-    @Override
-//    public void getItemOffsets(Rect outRect, int itemPosition, RecyclerView parent) {
-//        if (mOrientation == VERTICAL_LIST) {
-//            MyLog.e(mDivider.getIntrinsicWidth() + "++++++++");
-//            outRect.set(0, 0, 0, mDivider.getIntrinsicHeight());
-//        } else {
-//            outRect.set(0, 0, mDivider.getIntrinsicWidth(), 0);
-//        }
-//    }
 
     public void getItemOffsets(Rect outRect, View view, RecyclerView parent, RecyclerView.State state) {
         if (mOrientation == VERTICAL_LIST) {
