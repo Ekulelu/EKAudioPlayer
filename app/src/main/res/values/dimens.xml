@@ -9,6 +9,7 @@
     <dimen name="item_padding_start">10dp</dimen>
     <dimen name="cover_margin_top">20dp</dimen>
     <dimen name="play_bar_img_btn_horizontal_margin">30dp</dimen>
-    <dimen name="play_bar_top_margin">120dp</dimen>
+    <dimen name="play_bar_top_margin">90dp</dimen>
     <dimen name="cover_size">350dp</dimen>
+    <dimen name="paly_view_title_margin">10dp</dimen>
 </resources>

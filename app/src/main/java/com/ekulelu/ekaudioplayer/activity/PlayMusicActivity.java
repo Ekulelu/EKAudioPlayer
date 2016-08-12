@@ -10,6 +10,7 @@ import com.ekulelu.ekaudioplayer.R;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
+import butterknife.OnClick;
 
 /** Music play main activity. Create a service to play music which can run in background.
  * Created by aahu on 2016/8/11 0011.
@@ -42,5 +43,31 @@ public class PlayMusicActivity extends AppCompatActivity{
         ButterKnife.bind(this);
     }
 
+    @OnClick(R.id.img_btn_fast_forward) void onClickFastForward() {
+        // TODO call server...
+    }
 
+    @OnClick(R.id.img_btn_fast_reverse) void onClickFastReverse() {
+        // TODO call server...
+    }
+
+    @OnClick(R.id.img_btn_play_stop) void onClickStop() {
+        // TODO call server...
+    }
+
+    @OnClick(R.id.img_btn_next) void onClickNext() {
+        // TODO call server...
+    }
+
+    @OnClick(R.id.img_btn_previous) void onClickPrevious() {
+        // TODO call server...
+    }
+
+    @OnClick(R.id.img_btn_back_to_list) void onClickBackToList() {
+        // TODO call server...
+    }
+
+    @OnClick(R.id.img_btn_cover) void onClickCover() {
+        // TODO call server...
+    }
 }

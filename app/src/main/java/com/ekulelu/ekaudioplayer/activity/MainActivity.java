@@ -1,11 +1,10 @@
 package com.ekulelu.ekaudioplayer.activity;
 
 import android.Manifest;
-import android.content.ContentUris;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
-import android.net.Uri;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.support.v4.app.ActivityCompat;
@@ -18,6 +17,7 @@ import android.view.View;
 import com.ekulelu.ekaudioplayer.Model.MusicModel;
 import com.ekulelu.ekaudioplayer.common.MusicList;
 import com.ekulelu.ekaudioplayer.R;
+import com.ekulelu.ekaudioplayer.service.MusicService;
 import com.ekulelu.ekaudioplayer.util.ContextUtil;
 import com.ekulelu.ekaudioplayer.util.MyToast;
 
@@ -30,18 +30,21 @@ import butterknife.ButterKnife;
  */
 public class MainActivity extends AppCompatActivity {
 
+    public static String MEDIA_FILE_PATH = "MediaFilePath";
+    public static String MEDIA_SEEK_TIME = "MediaSeekTime";
+
     @BindView(R.id.recycler_view_music_list)
     MusicList mRycvMusicList;
 
 
     ArrayList<MusicModel> mMusicLists = new ArrayList<>();
 
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         ButterKnife.bind(this);
-
 
         //当在shell用rm删除文件的时候，并不会同步contentProvide，需要自己删除。
 //        Uri uri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, 51);
@@ -55,11 +58,15 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onItemClick(View view, int position) {
                 MyToast.showShortText("短按了  "  + position);
+                MusicService.startPlay(mMusicLists.get(position).getPath());
             }
 
             @Override
             public void onItemLongClick(View view, int position) {
                 MyToast.showShortText("长按了  "  + position);
+                Intent intent = new Intent(MainActivity.this, MusicService.class);
+                intent.putExtra(MusicService.ACTION_MODE,MusicService.ACTION_PAUSE);
+                startService(intent);
             }
         });
 
@@ -78,7 +85,6 @@ public class MainActivity extends AppCompatActivity {
                     null, null, null);
 
             if (cursor != null) {
-
                 while (cursor.moveToNext()) {
                     String path = cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA));
                     if (!path.endsWith("mp3")) {
