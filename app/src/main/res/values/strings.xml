@@ -1,4 +1,6 @@
 <resources>
     <string name="app_name">EKAudioPlayer</string>
     <string name="title">歌曲列表</string>
+    <string name="fail_to_access_sdcard">获取sd卡权限失败</string>
+    <string name="no_music">没有找到歌曲</string>
 </resources>

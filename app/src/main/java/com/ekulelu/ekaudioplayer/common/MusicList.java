@@ -15,6 +15,7 @@ import android.widget.TextView;
 import com.ekulelu.ekaudioplayer.Model.MusicModel;
 import com.ekulelu.ekaudioplayer.util.ContextUtil;
 import com.ekulelu.ekaudioplayer.R;
+import com.ekulelu.ekaudioplayer.util.MyToast;
 
 import java.util.ArrayList;
 
@@ -76,7 +77,7 @@ public class MusicList extends RecyclerView{
         @Override
         public MyViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
             LayoutInflater inflater = LayoutInflater.from(ContextUtil.getInstance());
-            View view = inflater.inflate(R.layout.view_music_list_item,parent,false);
+            View view = inflater.inflate(R.layout.item_music_list,parent,false);
             return new MyViewHolder(view);
         }
 
@@ -102,6 +103,13 @@ public class MusicList extends RecyclerView{
                     }
                 });
             }
+
+            holder.mBtn.setOnClickListener(new OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    MyToast.showShortText("button click");
+                }
+            });
         }
 
         @Override
