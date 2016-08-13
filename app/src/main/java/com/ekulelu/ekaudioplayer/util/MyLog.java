@@ -42,7 +42,9 @@ public class MyLog {
 
     public static void e(String string) {
         Log.e(TAG,string);
-
+    }
+    public static void e(int string) {
+        Log.e(TAG,"" + string);
     }
 
 }

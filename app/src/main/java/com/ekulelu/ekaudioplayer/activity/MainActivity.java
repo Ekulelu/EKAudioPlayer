@@ -1,11 +1,15 @@
 package com.ekulelu.ekaudioplayer.activity;
 
 import android.Manifest;
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.os.Environment;
+import android.os.IBinder;
 import android.provider.MediaStore;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -19,6 +23,7 @@ import com.ekulelu.ekaudioplayer.common.MusicList;
 import com.ekulelu.ekaudioplayer.R;
 import com.ekulelu.ekaudioplayer.service.MusicService;
 import com.ekulelu.ekaudioplayer.util.ContextUtil;
+import com.ekulelu.ekaudioplayer.util.MyLog;
 import com.ekulelu.ekaudioplayer.util.MyToast;
 
 import java.util.ArrayList;
@@ -31,7 +36,8 @@ import butterknife.ButterKnife;
 public class MainActivity extends AppCompatActivity {
 
     public static String MEDIA_FILE_PATH = "MediaFilePath";
-    public static String MEDIA_SEEK_TIME = "MediaSeekTime";
+//    public static String MEDIA_SEEK_TIME = "MediaSeekTime";
+//    public static int START_MUSIC_ACTIVITY_REQUEST_CODE = 0;
 
     @BindView(R.id.recycler_view_music_list)
     MusicList mRycvMusicList;
@@ -39,12 +45,15 @@ public class MainActivity extends AppCompatActivity {
 
     ArrayList<MusicModel> mMusicLists = new ArrayList<>();
 
+    MusicService mMusicService;
+    ServiceConnection conn;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         ButterKnife.bind(this);
+        MyLog.e("----MainActivity create");
 
         //当在shell用rm删除文件的时候，并不会同步contentProvide，需要自己删除。
 //        Uri uri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, 51);
@@ -52,26 +61,32 @@ public class MainActivity extends AppCompatActivity {
         ContextUtil.getInstance().getContentResolver().notifyChange(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,null);
         checkPermision();
 
+
+//        bindMusicService();
+
+        Intent intent = new Intent(ContextUtil.getInstance(), MusicService.class);
+        ContextUtil.getInstance().startService(intent);
+
         //TODO 下面这段抽出来
         MusicList.MusicListAdapter adapter = (MusicList.MusicListAdapter) mRycvMusicList.getAdapter();
         adapter.setmOnItemClickLitener(new MusicList.OnItemClickLitener() {
             @Override
             public void onItemClick(View view, int position) {
-                MyToast.showShortText("短按了  "  + position);
-                MusicService.startPlay(mMusicLists.get(position).getPath());
+//                MyToast.showShortText("短按了  "  + position);
+//                mMusicService.startPlay(mMusicLists.get(position).getPath());
+                Intent intent = new Intent(MainActivity.this, PlayMusicActivity.class);
+//                Bundle bundle = new Bundle();
+                String path = mMusicLists.get(position).getPath();
+                intent.putExtra(MEDIA_FILE_PATH, path);
+                startActivity(intent);
             }
 
             @Override
             public void onItemLongClick(View view, int position) {
                 MyToast.showShortText("长按了  "  + position);
-                Intent intent = new Intent(MainActivity.this, MusicService.class);
-                intent.putExtra(MusicService.ACTION_MODE,MusicService.ACTION_PAUSE);
-                startService(intent);
+                mMusicService.pausePlay();
             }
         });
-
-
-
     }
 
 
@@ -111,9 +126,28 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+
+
+    private void bindMusicService() {
+        conn = new ServiceConnection() {
+            @Override
+            public void onServiceDisconnected(ComponentName name) {
+            }
+
+            @Override
+            public void onServiceConnected(ComponentName name, IBinder service) {
+                mMusicService = ((MusicService.LocalBinder)service).getService();
+            }
+        };
+
+        Intent intent = new Intent(ContextUtil.getInstance(), MusicService.class);
+        bindService(intent, conn, Context.BIND_AUTO_CREATE);
+    }
+
     final private int REQUEST_CODE_ASK_PERMISSIONS = 123;
     private void  checkPermision() {
         //检查权限
+        //TODO 逻辑需要修改
         int hasWriteContactsPermission = ContextCompat.checkSelfPermission(this,Manifest.permission.WRITE_EXTERNAL_STORAGE);
 
         if (hasWriteContactsPermission != PackageManager.PERMISSION_GRANTED) {
@@ -162,5 +196,14 @@ public class MainActivity extends AppCompatActivity {
                 .setNegativeButton("Cancel", null)
                 .create()
                 .show();
+    }
+
+    @Override
+    protected void onDestroy() {
+        //下面这段可以让activity退出后结束service
+        Intent intent = new Intent(ContextUtil.getInstance(), MusicService.class);
+        stopService(intent);
+        MyLog.e("-- MainActivity stop, and stop service");
+        super.onDestroy();
     }
 }
