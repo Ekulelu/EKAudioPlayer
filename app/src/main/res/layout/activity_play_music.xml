@@ -2,7 +2,8 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:orientation="vertical" android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:gravity="center_horizontal">
+    android:gravity="center_horizontal"
+    android:weightSum="1">
 
     <android.support.v7.widget.Toolbar
         android:id="@+id/toolbar"
@@ -53,11 +54,22 @@
         android:adjustViewBounds="false"
         android:background="@color/color_transparency"
         android:scaleType="fitCenter" />
+
+    <TextView
+        android:id="@+id/text_view_time"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="1:48"
+        android:layout_marginTop="@dimen/text_view_time_top_margin"
+        android:textSize="@dimen/time_text_size"
+        />
+
+
+
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="@dimen/play_bar_top_margin"
-
         android:background="#50000000">
         <ImageButton
             android:id="@+id/img_btn_fast_reverse"

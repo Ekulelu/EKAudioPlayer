@@ -1,12 +1,11 @@
 package com.ekulelu.ekaudioplayer.activity;
 
-import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
-import android.graphics.drawable.Drawable;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.IBinder;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
@@ -21,13 +20,12 @@ import com.ekulelu.ekaudioplayer.util.ContextUtil;
 import com.ekulelu.ekaudioplayer.util.MyLog;
 
 import org.greenrobot.eventbus.EventBus;
-import org.greenrobot.eventbus.Subscribe;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
 
-/** Music play main activity. Create a service to play music which can run in background.
+/** Music play main activity. Create a service to play music which can mRun in background.
  * Created by aahu on 2016/8/11 0011.
  */
 public class PlayMusicActivity extends AppCompatActivity{
@@ -55,12 +53,35 @@ public class PlayMusicActivity extends AppCompatActivity{
     @BindView(R.id.img_btn_fast_forward)
     ImageButton mImgBtnFastForward;
 
-    private ServiceConnection conn;
+    @BindView(R.id.text_view_time)
+    TextView mTime;
+
+
+
 
     private MusicService mMusicService;
 
 
     private MusicModel mMusicModel;
+
+    private Handler handler = new Handler();
+
+    private boolean mRun;
+
+    private Runnable myRunnable= new Runnable() {
+        public void run() {
+
+            if (mRun) {
+                handler.postDelayed(this, 1000);
+                int time = (int) (mMusicService.getCurrentPosition() * 0.001);
+                int minute = (time / 60);
+                int second = (time % 60);
+                mTime.setText( minute + " : " + second);
+
+            }
+        }
+    };
+
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -70,10 +91,11 @@ public class PlayMusicActivity extends AppCompatActivity{
         MyLog.e("----MusicActivity create");
 
         Intent intent=getIntent();
-        Bundle bundle=intent.getExtras();
         mMusicModel = (MusicModel) intent.getSerializableExtra(MainActivity.MUSIC_MODEL);
-        //一定要先赋值musicmodell模型再绑定模型
+        //一定要先赋值musicModel模型再绑定模型
         bindMusicService();
+
+
 
     }
 
@@ -85,16 +107,18 @@ public class PlayMusicActivity extends AppCompatActivity{
 
     private void initWidgets() {
         mTvMusicTitle.setText(mMusicModel.getTitle());
-
     }
 
     private void startMusic() {
         initWidgets();
         mMusicService.startPlay(mMusicModel.getPath());
+        mRun = true;
+        handler.post(myRunnable);
+        mImgBtnPlay.setImageResource(android.R.drawable.ic_media_pause);
     }
 
     private void bindMusicService() {
-        conn = new ServiceConnection() {
+        ServiceConnection conn = new ServiceConnection() {
             @Override
             public void onServiceDisconnected(ComponentName name) {
             }
@@ -110,9 +134,12 @@ public class PlayMusicActivity extends AppCompatActivity{
         bindService(intent, conn, Context.BIND_AUTO_CREATE);
     }
 
+
+
     @Override
     protected void onStop() {
         MyLog.e("---MusicActivity stop");
+        mRun = false;
         super.onStop();
     }
 
@@ -125,15 +152,6 @@ public class PlayMusicActivity extends AppCompatActivity{
 
 
 
-//    @Subscribe
-//    public void OnMusicEvent(MusicEvent event) {
-//        switch (event.getAction()) {
-//            case MusicEvent.MUSIC_COMPLETED:
-//                EventBus.getDefault().post();
-//        }
-//    }
-
-
     /****************************************
      * 以下的控件响应方法
      */
@@ -141,10 +159,10 @@ public class PlayMusicActivity extends AppCompatActivity{
 
     @OnClick(R.id.img_btn_play_pause) void onClickPlayOrPause() {
         if(mMusicService.isPause()) {
-            mMusicService.startPlay();
-            mImgBtnPlay.setImageResource(android.R.drawable.ic_media_pause);
+            startMusic();
         } else {
             mMusicService.pausePlay();
+            mRun = false;
             mImgBtnPlay.setImageResource(android.R.drawable.ic_media_play);
         }
     }
@@ -165,7 +183,6 @@ public class PlayMusicActivity extends AppCompatActivity{
     }
 
     @OnClick(R.id.img_btn_next) void onClickNext() {
-        // TODO call server...
         MyLog.e("--next music");
         MusicEvent event = new MusicEvent();
         event.setAction(MusicEvent.NEXT);
@@ -173,7 +190,6 @@ public class PlayMusicActivity extends AppCompatActivity{
     }
 
     @OnClick(R.id.img_btn_previous) void onClickPrevious() {
-        // TODO call server...
         MyLog.e("--next music");
         MusicEvent event = new MusicEvent();
         event.setAction(MusicEvent.PREVIOUS);
