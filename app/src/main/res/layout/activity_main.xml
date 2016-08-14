@@ -20,14 +20,9 @@
                 android:text="@string/title"
                 android:layout_centerHorizontal="true"
                 android:textSize="@dimen/title_size"
+                android:textColor="@color/white"
                 />
-            <ImageButton
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:src="@mipmap/add"
-                android:background="@color/color_transparency"
-                android:layout_marginTop="@dimen/image_button_margin_top"
-                android:visibility = "gone" />
+
         </RelativeLayout>
 
     </android.support.v7.widget.Toolbar>

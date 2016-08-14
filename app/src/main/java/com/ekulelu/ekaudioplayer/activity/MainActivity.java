@@ -1,25 +1,38 @@
 package com.ekulelu.ekaudioplayer.activity;
 
 import android.Manifest;
+import android.content.BroadcastReceiver;
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.os.Environment;
+import android.os.IBinder;
 import android.provider.MediaStore;
+import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
+import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
 
+import com.ekulelu.ekaudioplayer.Model.MusicEvent;
 import com.ekulelu.ekaudioplayer.Model.MusicModel;
 import com.ekulelu.ekaudioplayer.common.MusicList;
 import com.ekulelu.ekaudioplayer.R;
 import com.ekulelu.ekaudioplayer.service.MusicService;
 import com.ekulelu.ekaudioplayer.util.ContextUtil;
+import com.ekulelu.ekaudioplayer.util.MyLog;
 import com.ekulelu.ekaudioplayer.util.MyToast;
+
+import org.greenrobot.eventbus.EventBus;
+import org.greenrobot.eventbus.Subscribe;
 
 import java.util.ArrayList;
 import butterknife.BindView;
@@ -30,56 +43,82 @@ import butterknife.ButterKnife;
  */
 public class MainActivity extends AppCompatActivity {
 
-    public static String MEDIA_FILE_PATH = "MediaFilePath";
-    public static String MEDIA_SEEK_TIME = "MediaSeekTime";
+    public static String MUSIC_MODEL = "MusicModel";
 
     @BindView(R.id.recycler_view_music_list)
     MusicList mRycvMusicList;
 
 
-    ArrayList<MusicModel> mMusicLists = new ArrayList<>();
+    private ArrayList<MusicModel> mMusicLists = new ArrayList<>();
 
+//    private MusicService mMusicService;
+//    private ServiceConnection conn;
+    private int mMusicPos; //记录当前音乐在音乐list的位置
+    private BroadcastReceiver mMusicBroadcastReceiver;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         ButterKnife.bind(this);
+        MyLog.e("----MainActivity create");
 
         //当在shell用rm删除文件的时候，并不会同步contentProvide，需要自己删除。
 //        Uri uri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, 51);
 //        ContextUtil.getInstance().getContentResolver().delete(uri, null, null);
         ContextUtil.getInstance().getContentResolver().notifyChange(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,null);
-        checkPermision();
+        checkPermission(REQUEST_CODE_ASK_SDCARD_PERMISSIONS,Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                getString(R.string.request_sdcard_permission_message)); //SD卡权限
+        checkPermission(REQUEST_CODE_ASK_PHONE_STATE_PERMISSIONS,Manifest.permission.READ_PHONE_STATE,
+                getString(R.string.request_phone_state_permission_message)); //通话状态权限
+        checkPermission(REQUEST_CODE_ASK_SMS_RECEIVE_PERMISSIONS,Manifest.permission.RECEIVE_SMS,
+                getString(R.string.request_sms_permission_message));
+        checkPermission(REQUEST_CODE_ASK_OUT_GOING_CALL_PERMISSIONS,Manifest.permission.PROCESS_OUTGOING_CALLS,
+                getString(R.string.request_outgoing_call_permission_message));
+
+
+
+        EventBus.getDefault().register(this);
+
+//        bindMusicService();
+
+        mMusicBroadcastReceiver = new MusicBroadcastReceiver();
+        IntentFilter intentFilter = new IntentFilter();
+        intentFilter.addAction(MusicService.MUSCI_COMPLETED);
+        LocalBroadcastManager.getInstance(this).registerReceiver(mMusicBroadcastReceiver, intentFilter);
+
+
+        Intent intent = new Intent(ContextUtil.getInstance(), MusicService.class);
+        ContextUtil.getInstance().startService(intent);
 
         //TODO 下面这段抽出来
         MusicList.MusicListAdapter adapter = (MusicList.MusicListAdapter) mRycvMusicList.getAdapter();
         adapter.setmOnItemClickLitener(new MusicList.OnItemClickLitener() {
             @Override
             public void onItemClick(View view, int position) {
-                MyToast.showShortText("短按了  "  + position);
-                MusicService.startPlay(mMusicLists.get(position).getPath());
+                mMusicPos = position;
+                startMusic();
             }
 
             @Override
             public void onItemLongClick(View view, int position) {
                 MyToast.showShortText("长按了  "  + position);
-                Intent intent = new Intent(MainActivity.this, MusicService.class);
-                intent.putExtra(MusicService.ACTION_MODE,MusicService.ACTION_PAUSE);
-                startService(intent);
+//                mMusicService.pausePlay();
             }
         });
-
-
-
     }
 
 
+    private void startMusic() {
+        Intent intent = new Intent(MainActivity.this, PlayMusicActivity.class);
+        intent.putExtra(MUSIC_MODEL, mMusicLists.get(mMusicPos));
+        startActivity(intent);
+    }
 
 
     private void initData() {
         if(! Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)){
-            MyToast.showShortText("NO sdcard");
+            MyToast.showShortText(getString(R.string.no_sdcard));
         } else {
             Cursor cursor = ContextUtil.getInstance().getContentResolver().query(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, null,
                     null, null, null);
@@ -87,7 +126,8 @@ public class MainActivity extends AppCompatActivity {
             if (cursor != null) {
                 while (cursor.moveToNext()) {
                     String path = cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA));
-                    if (!path.endsWith("mp3")) {
+                    String ar = cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST));
+                    if (!path.endsWith(getString(R.string.music_suffix_filter)) || null == ar || ar.equals("下川みくに")) {
                         continue;
                     }
                     MusicModel model = new MusicModel();
@@ -111,43 +151,118 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    final private int REQUEST_CODE_ASK_PERMISSIONS = 123;
-    private void  checkPermision() {
+
+
+//    private void bindMusicService() {
+//        conn = new ServiceConnection() {
+//            @Override
+//            public void onServiceDisconnected(ComponentName name) {
+//            }
+//
+//            @Override
+//            public void onServiceConnected(ComponentName name, IBinder service) {
+////                mMusicService = ((MusicService.LocalBinder)service).getService();
+//            }
+//        };
+//
+//        Intent intent = new Intent(ContextUtil.getInstance(), MusicService.class);
+//        bindService(intent, conn, Context.BIND_AUTO_CREATE);
+//    }
+
+    //接受到上一首,下一首的按钮事件
+    @Subscribe
+    public void OnMusicEvent(MusicEvent event) {
+        switch (event.getAction()) {
+            case MusicEvent.NEXT:
+                mMusicPos = (mMusicPos +1 )% mMusicLists.size();
+                break;
+            case MusicEvent.PREVIOUS:
+                mMusicPos--;
+                if (mMusicPos < 0){
+                    mMusicPos = 0;
+                }
+            default:
+        }
+        startMusic();
+    }
+
+
+    public class MusicBroadcastReceiver extends BroadcastReceiver {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            if (MusicService.MUSCI_COMPLETED.equals(action)){
+                //TODO 可以根据循环模式选择下一首,这里先直接调用下一首
+                mMusicPos = (mMusicPos +1 )% mMusicLists.size();
+                startMusic();
+            }
+        }
+    }
+
+    /**************************************/
+
+    final private int REQUEST_CODE_ASK_SDCARD_PERMISSIONS = 1;
+    final private int REQUEST_CODE_ASK_PHONE_STATE_PERMISSIONS = 2;
+    final private int REQUEST_CODE_ASK_SMS_RECEIVE_PERMISSIONS = 3;
+    final private int REQUEST_CODE_ASK_OUT_GOING_CALL_PERMISSIONS = 4;
+
+    private void checkPermission(final int requestCode, final String permission, String rationale) {
         //检查权限
-        int hasWriteContactsPermission = ContextCompat.checkSelfPermission(this,Manifest.permission.WRITE_EXTERNAL_STORAGE);
+        //TODO 逻辑需要修改
+        int hasWriteContactsPermission = ContextCompat.checkSelfPermission(this,permission);
 
         if (hasWriteContactsPermission != PackageManager.PERMISSION_GRANTED) {
-            if (!ActivityCompat.shouldShowRequestPermissionRationale(MainActivity.this,
-                    Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
-                showMessageOKCancel("You need to allow access to SDCard",
+            if (ActivityCompat.shouldShowRequestPermissionRationale(MainActivity.this,
+                    permission)) {
+                showMessageOKCancel(rationale,
                         new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
                                 ActivityCompat.requestPermissions(MainActivity.this,
-                                        new String[] {Manifest.permission.WRITE_EXTERNAL_STORAGE},
-                                        REQUEST_CODE_ASK_PERMISSIONS);
+                                        new String[] {permission},
+                                        requestCode);
                             }
                         });
                 return;
             }
             ActivityCompat.requestPermissions(MainActivity.this,
-                    new String[] {Manifest.permission.WRITE_CONTACTS},
-                    REQUEST_CODE_ASK_PERMISSIONS);
+                    new String[] {permission},
+                    requestCode);
             return;
         }
         initData();
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
         switch (requestCode) {
-            case REQUEST_CODE_ASK_PERMISSIONS:
+            case REQUEST_CODE_ASK_SDCARD_PERMISSIONS:
                 if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    // Permission Granted
                     initData();
                 } else {
-                    // Permission Denied
                     MyToast.showShortText(getString(R.string.fail_to_access_sdcard));
+                }
+                break;
+            case REQUEST_CODE_ASK_PHONE_STATE_PERMISSIONS:
+                if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    initData();
+                } else {
+                    MyToast.showShortText(getString(R.string.fail_to_obtain_phone_state_permission));
+                }
+                break;
+            case REQUEST_CODE_ASK_OUT_GOING_CALL_PERMISSIONS:
+                if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    initData();
+                } else {
+                    MyToast.showShortText(getString(R.string.fail_to_obtain_out_going_call_permission));
+                }
+                break;
+            case REQUEST_CODE_ASK_SMS_RECEIVE_PERMISSIONS:
+                if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    initData();
+                } else {
+                    MyToast.showShortText(getString(R.string.fail_to_obtain_sms_receive_permission));
                 }
                 break;
             default:
@@ -158,9 +273,20 @@ public class MainActivity extends AppCompatActivity {
     private void showMessageOKCancel(String message, DialogInterface.OnClickListener okListener) {
         new AlertDialog.Builder(MainActivity.this)
                 .setMessage(message)
-                .setPositiveButton("OK", okListener)
-                .setNegativeButton("Cancel", null)
+                .setPositiveButton(getString(R.string.ok), okListener)
+                .setNegativeButton(getString(R.string.cancel), null)
                 .create()
                 .show();
+    }
+
+    @Override
+    protected void onStop() {
+        //下面这段可以让activity退出后结束service
+        Intent intent = new Intent(ContextUtil.getInstance(), MusicService.class);
+        stopService(intent);
+        EventBus.getDefault().unregister(this);
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(mMusicBroadcastReceiver);
+        MyLog.e("-- MainActivity stop, and stop service");
+        super.onStop();
     }
 }

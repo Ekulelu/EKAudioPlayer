@@ -9,13 +9,11 @@ import android.util.AttributeSet;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.TextView;
 
 import com.ekulelu.ekaudioplayer.Model.MusicModel;
 import com.ekulelu.ekaudioplayer.util.ContextUtil;
 import com.ekulelu.ekaudioplayer.R;
-import com.ekulelu.ekaudioplayer.util.MyToast;
 
 import java.util.ArrayList;
 
@@ -83,7 +81,9 @@ public class MusicList extends RecyclerView{
 
         @Override
         public void onBindViewHolder(final MyViewHolder holder, int position) {
-            holder.mTv.setText(mData.get(position).getTitle());
+            holder.mTvTitle.setText(mData.get(position).getTitle());
+            holder.mTvAlbum.setText(mData.get(position).getAlbum());
+            holder.mTvArtist.setText(mData.get(position).getArtist());
 
             if(mOnItemClickLitener != null) {
                 holder.itemView.setOnClickListener(new OnClickListener() {
@@ -104,12 +104,12 @@ public class MusicList extends RecyclerView{
                 });
             }
 
-            holder.mBtn.setOnClickListener(new OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    MyToast.showShortText("button click");
-                }
-            });
+//            holder.mBtn.setOnClickListener(new OnClickListener() {
+//                @Override
+//                public void onClick(View v) {
+//                    MyToast.showShortText("button click");
+//                }
+//            });
         }
 
         @Override
@@ -118,12 +118,14 @@ public class MusicList extends RecyclerView{
         }
 
         class MyViewHolder extends RecyclerView.ViewHolder {
-            TextView mTv;
-            Button mBtn;
+            TextView mTvTitle;
+            TextView mTvAlbum;
+            TextView mTvArtist;
             public MyViewHolder(View view) {
                 super(view);
-                mTv = (TextView) view.findViewById(R.id.text_view_music_title);
-                mBtn = (Button) view.findViewById(R.id.btn_item);
+                mTvTitle = (TextView) view.findViewById(R.id.text_view_music_title);
+                mTvAlbum = (TextView) view.findViewById(R.id.text_view_album);
+                mTvArtist = (TextView) view.findViewById(R.id.text_view_artist);
 
             }
         }
