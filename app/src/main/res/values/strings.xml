@@ -1,6 +1,19 @@
 <resources>
     <string name="app_name">EKAudioPlayer</string>
     <string name="title">歌曲列表</string>
+    <string name="no_sdcard">没找到SD卡</string>
     <string name="fail_to_access_sdcard">获取sd卡权限失败</string>
+    <string name="fail_to_obtain_phone_state_permission">获取通话状态权限失败</string>
+    <string name="fail_to_obtain_sms_receive_permission">获取短信权限失败</string>
+    <string name="fail_to_obtain_out_going_call_permission">获取读取拨打电话动作</string>
+
+    <string name="request_sdcard_permission_message">本程序需要读取SD卡</string>
+    <string name="request_phone_state_permission_message">本程序需要读取通话状态</string>
+    <string name="request_sms_permission_message">本程序需要知道短信到达</string>
+    <string name="request_outgoing_call_permission_message">需要读取拨打电话动作</string>
+
+    <string name="ok">OK</string>
     <string name="no_music">没有找到歌曲</string>
+    <string name="cancel">Cancel</string>
+    <string name="music_suffix_filter">mp3</string>
 </resources>

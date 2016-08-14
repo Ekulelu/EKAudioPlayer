@@ -19,20 +19,23 @@
                 android:src="@mipmap/back"
                 android:background="@color/color_transparency"
                 android:layout_centerVertical="true"
-                android:layout_marginTop="@dimen/image_button_margin_top"
                 />
-            <TextView
+            <com.ekulelu.ekaudioplayer.common.AlwaysMarqueeTextView
+                android:id="@+id/text_view_music_title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="@string/title"
                 android:layout_centerHorizontal="true"
-                android:textSize="@dimen/title_size"
+                android:textSize="@dimen/music_title_size"
                 android:gravity="center_vertical"
                 android:layout_toEndOf="@+id/img_btn_back_to_list"
                 android:layout_alignParentEnd="true"
                 android:textAlignment="center"
-                android:layout_marginStart="@dimen/paly_view_title_margin"
-                android:layout_marginEnd="@dimen/paly_view_title_margin"
+                android:textColor="@color/white"
+                android:layout_marginStart="@dimen/play_view_title_margin"
+                android:layout_marginEnd="@dimen/play_view_title_margin"
+                android:singleLine="true"
+                android:ellipsize="marquee"
                 />
 
         </RelativeLayout>

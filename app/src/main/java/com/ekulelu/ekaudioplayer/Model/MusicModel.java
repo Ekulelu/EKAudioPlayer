@@ -1,9 +1,11 @@
 package com.ekulelu.ekaudioplayer.Model;
 
+import java.io.Serializable;
+
 /**
  * Created by aahu on 2016/8/11 0011.
  */
-public class MusicModel {
+public class MusicModel implements Serializable {
     private int id;
     private String title;
     private int duration;
@@ -58,4 +60,5 @@ public class MusicModel {
     public void setAlbum(String album) {
         this.album = album;
     }
+
 }

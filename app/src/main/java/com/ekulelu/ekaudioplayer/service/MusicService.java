@@ -1,11 +1,17 @@
 package com.ekulelu.ekaudioplayer.service;
 
 import android.app.Service;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
 import android.media.MediaPlayer;
 import android.os.Binder;
 import android.os.IBinder;
+import android.provider.Telephony;
 import android.support.annotation.Nullable;
+import android.support.v4.content.LocalBroadcastManager;
+import android.telephony.PhoneStateListener;
+import android.telephony.TelephonyManager;
 
 import com.ekulelu.ekaudioplayer.activity.MainActivity;
 import com.ekulelu.ekaudioplayer.util.ContextUtil;
@@ -24,7 +30,7 @@ public class MusicService extends Service implements MediaPlayer.OnCompletionLis
 //    public static String ACTION_STOP = "com.ekulelu.ekaudioplayer.action.PLAY";
 //    public static String ACTION_SEEK_TO_TIME = "com.ekulelu.ekaudioplayer.action.SEEK_TO_TIME";
 //    public static String IS_RESTART = "com.ekulelu.ekaudioplayer.action.IS_RESTART";
-
+    public static final String MUSCI_COMPLETED = "com.ekulelu.ekaudioplayer.action.MusicComplete";
 
     private final IBinder binder = new LocalBinder();
 
@@ -53,6 +59,11 @@ public class MusicService extends Service implements MediaPlayer.OnCompletionLis
     public void onCompletion(MediaPlayer mediaPlayer) {
         //TODO 发送歌曲播放完毕的广播
         mIsPlayCompleted = true;
+        Intent intent = new Intent();
+        intent.setAction(MUSCI_COMPLETED);
+        //sendBroadcast(intent);
+        //发送应用内广播
+        LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
 
     @Override
@@ -105,14 +116,14 @@ public class MusicService extends Service implements MediaPlayer.OnCompletionLis
     public void onDestroy() {
         mMediaPlayer.stop();
         mMediaPlayer.release();  //release the MediaPlayer
-        MyLog.e("music service stops");
+        MyLog.e("---music service stops");
         super.onDestroy();
     }
 
 
     @Override
     public boolean onUnbind(Intent intent) {
-        MyLog.e("unbind ======");
+        MyLog.d("unbind ======");
         return super.onUnbind(intent);
     }
 
@@ -234,4 +245,43 @@ public class MusicService extends Service implements MediaPlayer.OnCompletionLis
     }
 
 
+
+    //这次注册在了manifest里面。
+    public class MyPhoneStateListener extends BroadcastReceiver {
+        public static final String SMS_RECEIVED_ACTION = "android.provider.Telephony.SMS_RECEIVED";
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if(intent.getAction().equals(Intent.ACTION_NEW_OUTGOING_CALL)){ //打电话
+                pausePlay();
+            } else if (SMS_RECEIVED_ACTION.equals(intent.getAction())) { //收到短信
+                pausePlay();
+                try {
+                    Thread.sleep(2000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                startPlay();
+            } else{
+                //如果是来电
+                TelephonyManager tm =
+                        (TelephonyManager)context.getSystemService(Service.TELEPHONY_SERVICE);
+
+                switch (tm.getCallState()) {
+                    case TelephonyManager.CALL_STATE_RINGING://标识当前是来电
+                        pausePlay();
+                        break;
+                    case TelephonyManager.CALL_STATE_OFFHOOK://接通
+
+                        break;
+
+                    case TelephonyManager.CALL_STATE_IDLE://空闲
+
+                        break;
+                    default:
+
+                }
+            }
+        }
+    }
 }
