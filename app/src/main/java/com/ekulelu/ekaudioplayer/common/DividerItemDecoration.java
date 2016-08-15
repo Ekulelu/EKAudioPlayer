@@ -14,7 +14,7 @@ import com.ekulelu.ekaudioplayer.R;
 import com.ekulelu.ekaudioplayer.util.ContextUtil;
 import com.ekulelu.ekaudioplayer.util.MyLog;
 
-/**
+/** 负责RecyclerView的分割线
  * Created by aahu on 2016/8/11 0011.
  */
 public class DividerItemDecoration extends RecyclerView.ItemDecoration{
@@ -42,6 +42,10 @@ public class DividerItemDecoration extends RecyclerView.ItemDecoration{
         mDivider.setColorFilter(ContextUtil.getInstance().getResources().getColor(R.color.color_divider_bg), PorterDuff.Mode.ADD);
     }
 
+    /**
+     * 设置RecyclerView的布局方向
+     * @param orientation
+     */
     public void setOrientation(int orientation) {
         if (orientation != HORIZONTAL_LIST && orientation != VERTICAL_LIST) {
             throw new IllegalArgumentException("invalid orientation");
@@ -49,6 +53,12 @@ public class DividerItemDecoration extends RecyclerView.ItemDecoration{
         mOrientation = orientation;
     }
 
+    /**
+     * 负责画分割线
+     * @param c
+     * @param parent
+     * @param state
+     */
     @Override
     public void onDraw(Canvas c, RecyclerView parent,RecyclerView.State state) {
 
@@ -91,7 +101,13 @@ public class DividerItemDecoration extends RecyclerView.ItemDecoration{
         }
     }
 
-
+    /**
+     * 控件需要移动的大小，因为添加了divider，不移动的话，divider就会在item上。
+     * @param outRect
+     * @param view
+     * @param parent
+     * @param state
+     */
     public void getItemOffsets(Rect outRect, View view, RecyclerView parent, RecyclerView.State state) {
         if (mOrientation == VERTICAL_LIST) {
             outRect.set(0, 0, 0, HEIGHT);

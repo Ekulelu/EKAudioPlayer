@@ -8,6 +8,7 @@ import android.content.IntentFilter;
 import android.media.MediaPlayer;
 import android.os.Binder;
 import android.os.IBinder;
+import android.provider.Telephony;
 import android.support.annotation.Nullable;
 import android.support.v4.content.LocalBroadcastManager;
 import android.telephony.TelephonyManager;
@@ -33,7 +34,11 @@ public class MusicService extends Service implements MediaPlayer.OnCompletionLis
     private boolean mIsPause = true;
     private boolean mIsPlayCompleted = false;
 
+    /**
+     * 用于监听系统的电话状态和短信状态
+     */
     private MyPhoneStateListener mMyPhoneStateListener;
+
     @Override
     public void onCreate() {
         super.onCreate();
@@ -41,14 +46,19 @@ public class MusicService extends Service implements MediaPlayer.OnCompletionLis
         mMediaPlayer.setOnCompletionListener(this);
         mLastFilePath = "";
         MyLog.e("----service create");
-
         mMyPhoneStateListener = new MyPhoneStateListener();
         IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction(TelephonyManager.ACTION_PHONE_STATE_CHANGED);
+        intentFilter.addAction(Intent.ACTION_NEW_OUTGOING_CALL);
         intentFilter.addAction("android.provider.Telephony.SMS_RECEIVED");
         registerReceiver(mMyPhoneStateListener, intentFilter);
     }
 
+    /**
+     * 用来在bind的时候返回对象
+     * @param intent
+     * @return
+     */
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
@@ -62,7 +72,6 @@ public class MusicService extends Service implements MediaPlayer.OnCompletionLis
         mIsPlayCompleted = true;
         Intent intent = new Intent();
         intent.setAction(MUSIC_COMPLETED);
-        //sendBroadcast(intent);
         //发送应用内广播
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
@@ -133,12 +142,6 @@ public class MusicService extends Service implements MediaPlayer.OnCompletionLis
      * @param isRestart should restart to play
      */
     public void startPlay(String filePath, boolean isRestart) {
-//        Intent intent = new Intent(ContextUtil.getInstance(), MusicService.class);
-//        intent.putExtra(MainActivity.MEDIA_FILE_PATH, path);
-//        intent.putExtra(MusicService.IS_RESTART, isRestart);
-//        intent.putExtra(MusicService.ACTION_MODE,MusicService.ACTION_PLAY);
-//        ContextUtil.getInstance().startService(intent);
-
         if (!mLastFilePath.equals(filePath)) {  //说明换了歌曲
             try {
                 mMediaPlayer.stop();
@@ -184,7 +187,10 @@ public class MusicService extends Service implements MediaPlayer.OnCompletionLis
         MyLog.e("-- music stops");
     }
 
-    public void seekToTime(int seekTime) {  // seekTime is in microsecond
+    /**
+     *  seekTime is in microsecond
+     */
+    public void seekToTime(int seekTime) {
         if (!isPlaying()) {
             return;
         }
@@ -193,13 +199,14 @@ public class MusicService extends Service implements MediaPlayer.OnCompletionLis
         } else if (seekTime  > mMediaPlayer.getDuration()) {
             return;
         }
-
         mMediaPlayer.seekTo(seekTime);
         mIsPause = false;
     }
 
 
-
+    /**
+     * 会在bindService的时候传递这个类的对象过去，再那里可调用这个方法得到service
+     */
     public class LocalBinder extends Binder {
         public MusicService getService() {
             return MusicService.this;
@@ -207,8 +214,9 @@ public class MusicService extends Service implements MediaPlayer.OnCompletionLis
     }
 
 
-
-    //这种内部类必须要动态注册，否则会新建不了类
+    /**
+     * 这种内部类必须要动态注册，否则会新建不了类。用来接收电话状态和短信通知
+     */
     public class MyPhoneStateListener extends BroadcastReceiver {
         public static final String SMS_RECEIVED_ACTION = "android.provider.Telephony.SMS_RECEIVED";
 
@@ -216,6 +224,7 @@ public class MusicService extends Service implements MediaPlayer.OnCompletionLis
         public void onReceive(Context context, Intent intent) {
             if(intent.getAction().equals(Intent.ACTION_NEW_OUTGOING_CALL)){ //打电话
                 pausePlay();
+                EventBus.getDefault().post(new MusicEvent(MusicEvent.ACTION_NEW_OUTGOING_CALL));
             } else if (SMS_RECEIVED_ACTION.equals(intent.getAction())) { //收到短信
                 pausePlay();
                 EventBus.getDefault().post(new MusicEvent(MusicEvent.SMS_RECEIVED));

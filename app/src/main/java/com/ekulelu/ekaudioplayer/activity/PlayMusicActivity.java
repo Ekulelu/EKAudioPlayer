@@ -1,14 +1,17 @@
 package com.ekulelu.ekaudioplayer.activity;
 
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Message;
 import android.support.annotation.Nullable;
+import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
 import android.widget.ImageButton;
 import android.widget.SeekBar;
@@ -31,17 +34,23 @@ import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
 
-/** Music play main activity. Create a service to play music which can mRun in background.
+/** Music play main activity. The activity will finish when it go to background.
  * Created by aahu on 2016/8/11 0011.
  */
 public class PlayMusicActivity extends AppCompatActivity implements SeekBar.OnSeekBarChangeListener {
 
+    /**
+     * 点击快进按钮后的快进时间。
+     */
     private final int FAST_TIME = 5000;
 
-    private final int FRESH_WEIGETS = 0x1000;
+    private final int FLAG_FRESH_WIDGETS = 0x1000;
 
-    private final int FRESH_TIME = 0x1001;
+    private final int FLAG_FRESH_TIME = 0x1001;
 
+    /**
+     * 接收到信息后的停顿时间
+     */
     private final int MSM_REPLAY_TIME = 3000;
 
     @BindView(R.id.text_view_music_title)
@@ -75,17 +84,24 @@ public class PlayMusicActivity extends AppCompatActivity implements SeekBar.OnSe
 
     private MusicModel mMusicModel;
 
-    private Handler mHandlerTime = new Handler();
-
-//    private boolean mRun;
-
     private ServiceConnection mConn;
 
+    private int duartionfromFile;
+
+    /**
+     * 负责后台调用更新时间
+     */
     private Timer mTimer;
 
     private TimerTask mTimerTask;
 
+    /**
+     * 当前播放进度，单位是秒
+     */
     private static int mCurrentPosInSecond;
+
+    private PlayMusicActivityReceiver mReceiver;
+
 //    private Runnable myRunnable= new Runnable() {
 //        public void run() {
 //            if (mRun) {
@@ -100,24 +116,34 @@ public class PlayMusicActivity extends AppCompatActivity implements SeekBar.OnSe
 //        }
 //    };
 
+    /**
+     * 接收从Timer来的信息，更新控件
+     */
     private Handler mHandleMainThread = new Handler(){
         @Override
         public void handleMessage(Message msg) {
             super.handleMessage(msg);
-            MyLog.e("--handler");
-            if (msg.what == FRESH_WEIGETS) {
+//            MyLog.e("--handler");
+            if (msg.what == FLAG_FRESH_WIDGETS) {//更新标题
                 updateWidgets();
-            } else if(msg.what == FRESH_TIME){
+            } else if(msg.what == FLAG_FRESH_TIME){ //只更新时间
                 mSeekBar.setProgress(mCurrentPosInSecond);
                 setTvTime();
             }
         }
     };
 
+    /**
+     * 更新文字时间
+     */
     private void setTvTime() {
         int minute = (mCurrentPosInSecond / 60);
         int second = (mCurrentPosInSecond % 60);
-        mTvTime.setText( minute + " : " + second);
+        int duration = (int)(mMusicModel.getDuration() * 0.001);
+        int minuteAll = (duration / 60);
+        int secondAll = (duration % 60);
+        String str = minute + " : " + second + " / " + minuteAll + " : " + secondAll;
+        mTvTime.setText(str);
     }
 
     @Override
@@ -126,36 +152,67 @@ public class PlayMusicActivity extends AppCompatActivity implements SeekBar.OnSe
         setContentView(R.layout.activity_play_music);
         ButterKnife.bind(this);
         MyLog.e("----MusicActivity create");
-        MyLog.e("----MusicActivity" +Thread.currentThread() );
+//        MyLog.e("----MusicActivity" +Thread.currentThread() );
+
         mSeekBar.setOnSeekBarChangeListener(this);
 
         Intent intent=getIntent();
         mMusicModel = (MusicModel) intent.getSerializableExtra(MainActivity.MUSIC_MODEL);
+        duartionfromFile = mMusicModel.getDuration();
         //一定要先赋值musicModel模型再绑定模型
         bindMusicService(); // 在它的返回函数里面会开始音乐
 
-        EventBus.getDefault().register(this);
+        EventBus.getDefault().register(this);  //注册EventBus
 
+        //注册接收MainActivity信息的receiver
+        mReceiver = new PlayMusicActivityReceiver();
+        IntentFilter intentFilter = new IntentFilter();
+        intentFilter.addAction(MainActivity.PLAY_NEW_MUSIC);
+        LocalBroadcastManager.getInstance(this).registerReceiver(mReceiver, intentFilter);
+    }
+
+
+    /**
+     * 新的歌曲来的时候会调用
+     */
+    private class PlayMusicActivityReceiver extends BroadcastReceiver {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            if (MainActivity.PLAY_NEW_MUSIC.equals(action)) {
+                mMusicModel = (MusicModel) intent.getSerializableExtra(MainActivity.MUSIC_MODEL);
+                duartionfromFile = mMusicModel.getDuration();
+                mCurrentPosInSecond = 0;
+                startPlayMusic();
+            }
+        }
     }
 
     private class MyTimerTask extends TimerTask {
         @Override
         public void run() {
             Message msg = new Message();
-            msg.what = FRESH_TIME;
+            msg.what = FLAG_FRESH_TIME;
             mCurrentPosInSecond+=1;
             mHandleMainThread.sendMessage(msg);
-            MyLog.e("----timer thread" +Thread.currentThread() );
+//            MyLog.e("----timer thread" +Thread.currentThread() );
         }
     }
 
-    @Override
-    protected void onNewIntent(Intent intent) {
-        MyLog.e("----new intent");
-        mMusicModel = (MusicModel) intent.getSerializableExtra(MainActivity.MUSIC_MODEL);
-        startMusic();
-    }
+    /**
+     * 当有其他类重新发了Intent的时候会进入这个方法，现在不用了
+     * @param intent
+     */
+//    @Override
+//    protected void onNewIntent(Intent intent) {
+//        MyLog.e("----new intent");
+//        mMusicModel = (MusicModel) intent.getSerializableExtra(MainActivity.MUSIC_MODEL);
+//        startPlayMusic();
+//    }
 
+    /**
+     * 更新播放界面按钮和标题
+     */
     private void updateWidgets() {
         mTvMusicTitle.setText(mMusicModel.getTitle());
         if (mMusicService.isPlaying()) {
@@ -165,8 +222,14 @@ public class PlayMusicActivity extends AppCompatActivity implements SeekBar.OnSe
         }
     }
 
-    private void startMusic() {
+    /**
+     * 这个方法在几个地方调用：一个是service连接后，这种情况是这个activity被新建了。
+     * 第二是暂停后启动，这种状态下，这个activity仍在界面上。
+     * 这个方法会调用service的方法，开始播放音乐。
+     */
+    private void startPlayMusic() {
         updateWidgets();
+        //timer不计时的话，只需取消TimerTask即可，和iOS不一样。
         if (mTimerTask != null) {
             mTimerTask.cancel();
         }
@@ -174,27 +237,30 @@ public class PlayMusicActivity extends AppCompatActivity implements SeekBar.OnSe
         if (mTimer == null) {
             mTimer = new Timer();
         } else {
-            mTimer.purge();
+            mTimer.purge(); //清空timer里面已经取消的timerTask
         }
-        mTimer.schedule(mTimerTask,0,1000);
+        mTimer.schedule(mTimerTask,0,1000); //开启计时器计时
         mSeekBar.setMax((int)(mMusicModel.getDuration() * 0.001));
         mMusicService.startPlay(mMusicModel.getPath());
         mCurrentPosInSecond = (int) (mMusicService.getCurrentPosition() * 0.001);
-//        mRun = true;
 
         mImgBtnPlay.setImageResource(android.R.drawable.ic_media_pause);
     }
+
+    /**
+     * 暂停播放，停止Timer。
+     */
     private void pauseMusic() {
         mMusicService.pausePlay();
-//        mTimer.cancel();
-//        mTimer = null;
         mTimerTask.cancel();
         mTimer.purge();
-//        mRun = false;
         mImgBtnPlay.setImageResource(android.R.drawable.ic_media_play);
     }
 
 
+    /**
+     *
+     */
     private void bindMusicService() {
         mConn = new ServiceConnection() {
             @Override
@@ -204,27 +270,27 @@ public class PlayMusicActivity extends AppCompatActivity implements SeekBar.OnSe
             @Override
             public void onServiceConnected(ComponentName name, IBinder service) {
                 mMusicService = ((MusicService.LocalBinder)service).getService();
-                startMusic();
+                startPlayMusic();
             }
         };
-
         Intent intent = new Intent(ContextUtil.getInstance(), MusicService.class);
         bindService(intent, mConn, Context.BIND_AUTO_CREATE);
     }
 
 
-    //用来接收来自Service的电话和短信事件，更新面板控件,在主线程执行
+    /**
+     * 用来接收来自Service的电话和短信事件，更新面板控件,在主线程执行
+     */
     @Subscribe
     public void MusicEvent(MusicEvent event) {
         int action = event.getAction();
-        MyLog.e("----event thread" +Thread.currentThread() );
-        MyLog.e("---event");
-        if (MusicEvent.CALL_STATE_RINGING == action) {
+//        MyLog.e("----event thread" +Thread.currentThread() );
+        MyLog.e("---event from tel or sms");
+        if (MusicEvent.CALL_STATE_RINGING == action || MusicEvent.ACTION_NEW_OUTGOING_CALL == action) { //有电话来了或者打电话
             updateWidgets();
             MyLog.e("--playActivity receive pause");
-            mTimerTask.cancel();
+            mTimerTask.cancel(); //Android的是要timerTask cancel掉后就可以了，timer不用cancel
             mTimer.purge();
-//            mRun = false;
             mImgBtnPlay.setImageResource(android.R.drawable.ic_media_play);
         } else if (MusicEvent.SMS_RECEIVED == action) {
             updateWidgets();
@@ -232,11 +298,11 @@ public class PlayMusicActivity extends AppCompatActivity implements SeekBar.OnSe
                 @Override
                 public void run() {
                     Message msg = new Message();
-                    msg.what = FRESH_WEIGETS;
+                    msg.what = FLAG_FRESH_WIDGETS;
                     mHandleMainThread.sendMessage(msg);
-                    MyLog.e("----timer thread" +Thread.currentThread() );
+//                    MyLog.e("----timer thread" +Thread.currentThread() );
                 }
-            };
+            };  //开一个timer，在一定延时之后重新播放音乐。
             new Timer().schedule(timerTask,MSM_REPLAY_TIME);
         }
     }
@@ -248,6 +314,7 @@ public class PlayMusicActivity extends AppCompatActivity implements SeekBar.OnSe
         mTimer.purge();
         mTimer.cancel();
         mTimer = null;
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(mReceiver);
         super.onStop();
     }
 
@@ -264,7 +331,7 @@ public class PlayMusicActivity extends AppCompatActivity implements SeekBar.OnSe
     @Override
     public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
         if (fromUser) {
-            MyLog.e("---progress" + progress *1000);
+//            MyLog.e("---progress" + progress *1000);
             mMusicService.seekToTime(progress * 1000);
             mCurrentPosInSecond = progress;
             setTvTime(); //要先改了mCurrentPosInSecond再调用
@@ -292,7 +359,7 @@ public class PlayMusicActivity extends AppCompatActivity implements SeekBar.OnSe
 
     @OnClick(R.id.img_btn_play_pause) void onClickPlayOrPause() {
         if(mMusicService.isPause()) {
-            startMusic();
+            startPlayMusic();
         } else {
             pauseMusic();
         }
@@ -303,12 +370,14 @@ public class PlayMusicActivity extends AppCompatActivity implements SeekBar.OnSe
             MyLog.e("--not playing ");
         }
         int seekTime = mMusicService.getCurrentPosition() + FAST_TIME;
+        mCurrentPosInSecond = (int)(seekTime * 0.001);
         mMusicService.seekToTime(seekTime);
         MyLog.e("--seek to time + " + seekTime);
     }
 
     @OnClick(R.id.img_btn_fast_reverse) void onClickFastReverse() {
         int seekTime = mMusicService.getCurrentPosition() - FAST_TIME;
+        mCurrentPosInSecond = (int)(seekTime * 0.001);
         mMusicService.seekToTime(seekTime);
         MyLog.e("--seek to time + " + seekTime);
     }

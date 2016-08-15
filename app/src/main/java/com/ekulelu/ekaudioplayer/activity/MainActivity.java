@@ -2,13 +2,18 @@ package com.ekulelu.ekaudioplayer.activity;
 
 import android.Manifest;
 import android.content.BroadcastReceiver;
+import android.content.ComponentName;
+import android.content.ContentUris;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
+import android.net.Uri;
 import android.os.Environment;
+import android.os.IBinder;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
@@ -41,6 +46,7 @@ import butterknife.ButterKnife;
 public class MainActivity extends AppCompatActivity {
 
     public static String MUSIC_MODEL = "MusicModel";
+    public static String PLAY_NEW_MUSIC = "NewMusic";
 
     @BindView(R.id.recycler_view_music_list)
     MusicList mRycvMusicList;
@@ -48,8 +54,8 @@ public class MainActivity extends AppCompatActivity {
 
     private ArrayList<MusicModel> mMusicLists = new ArrayList<>();
 
-//    private MusicService mMusicService;
-//    private ServiceConnection conn;
+    private MusicService mMusicService;
+    private ServiceConnection conn;
     private int mMusicPos; //记录当前音乐在音乐list的位置
     private BroadcastReceiver mMusicBroadcastReceiver;
 
@@ -79,21 +85,15 @@ public class MainActivity extends AppCompatActivity {
         checkPermission(REQUEST_CODE_ASK_OUT_GOING_CALL_PERMISSIONS,Manifest.permission.PROCESS_OUTGOING_CALLS,
                 getString(R.string.request_outgoing_call_permission_message));
 
-
-
         EventBus.getDefault().register(this);
 
-//        bindMusicService();
+        bindMusicService();
 
         mMusicBroadcastReceiver = new MusicBroadcastReceiver();
         IntentFilter intentFilter = new IntentFilter();
         intentFilter.addAction(MusicService.MUSIC_COMPLETED);
         LocalBroadcastManager.getInstance(this).registerReceiver(mMusicBroadcastReceiver, intentFilter);
 
-
-
-        Intent intent = new Intent(ContextUtil.getInstance(), MusicService.class);
-        ContextUtil.getInstance().startService(intent);
 
         //TODO 下面这段抽出来
         MusicList.MusicListAdapter adapter = (MusicList.MusicListAdapter) mRycvMusicList.getAdapter();
@@ -107,12 +107,15 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onItemLongClick(View view, int position) {
                 MyToast.showShortText("长按了  "  + position);
-//                mMusicService.pausePlay();
+                mMusicService.pausePlay();
             }
         });
     }
 
 
+    /**
+     * 发送intent，启动PlayActivity。
+     */
     private void startMusic() {
         Intent intent = new Intent(MainActivity.this, PlayMusicActivity.class);
         intent.putExtra(MUSIC_MODEL, mMusicLists.get(mMusicPos));
@@ -120,6 +123,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
+    /**
+     * 读取sd卡获得歌曲列表
+     */
     private void initData() {
         if(! Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)){
             MyToast.showShortText(getString(R.string.no_sdcard));
@@ -150,6 +156,8 @@ public class MainActivity extends AppCompatActivity {
                 cursor.close();
             }
         }
+//        Uri uri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, 58);
+//        ContextUtil.getInstance().getContentResolver().delete(uri, null, null);
         mRycvMusicList.setmData(mMusicLists);
         if (0 == mMusicLists.size()) {
             MyToast.showShortText(getString(R.string.no_music));
@@ -157,59 +165,75 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
+    /**
+     * 绑定service，得到service对象。
+     */
+    private void bindMusicService() {
+        conn = new ServiceConnection() {
+            @Override
+            public void onServiceDisconnected(ComponentName name) {
+            }
 
-//    private void bindMusicService() {
-//        conn = new ServiceConnection() {
-//            @Override
-//            public void onServiceDisconnected(ComponentName name) {
-//            }
-//
-//            @Override
-//            public void onServiceConnected(ComponentName name, IBinder service) {
-////                mMusicService = ((MusicService.LocalBinder)service).getService();
-//            }
-//        };
-//
-//        Intent intent = new Intent(ContextUtil.getInstance(), MusicService.class);
-//        bindService(intent, conn, Context.BIND_AUTO_CREATE);
-//    }
-
-    //接受到上一首,下一首的按钮事件
-    @Subscribe
-    public void OnMusicEvent(MusicEvent event) {
-        switch (event.getAction()) {
-            case MusicEvent.NEXT:
-                mMusicPos = (mMusicPos +1 )% mMusicLists.size();
-                startMusic();
-                break;
-            case MusicEvent.PREVIOUS:
-                mMusicPos--;
-                if (mMusicPos < 0){
-                    mMusicPos = 0;
-                }
-                startMusic();
-            default:
-        }
-
+            @Override
+            public void onServiceConnected(ComponentName name, IBinder service) {
+                mMusicService = ((MusicService.LocalBinder)service).getService();
+            }
+        };
+        Intent intent = new Intent(ContextUtil.getInstance(), MusicService.class);
+        bindService(intent, conn, Context.BIND_AUTO_CREATE);
     }
 
+    /**
+     *  接收到上一首,下一首的按钮事件
+     */
+    @Subscribe
+    public void OnMusicEvent(MusicEvent event) {
+        int action = event.getAction();
+        if (action == MusicEvent.NEXT || action == MusicEvent.PREVIOUS){
+            if (action == MusicEvent.NEXT){
+                mMusicPos = (mMusicPos +1 )% mMusicLists.size();
+            } else {
+                mMusicPos--;
+                if (mMusicPos < 0){
+                    mMusicPos = mMusicLists.size() - 1;
+                }
+            }
+            MusicModel musicModel = mMusicLists.get(mMusicPos);
+            Intent broadcastIntent = new Intent();
+            broadcastIntent.setAction(PLAY_NEW_MUSIC);
+            broadcastIntent.putExtra(MUSIC_MODEL,musicModel);
+            LocalBroadcastManager.getInstance(MainActivity.this).sendBroadcast(broadcastIntent);
+        }
+    }
 
+    /**
+     * 用来处理播放完一首歌的情况
+     */
     public class MusicBroadcastReceiver extends BroadcastReceiver {
-
         @Override
         public void onReceive(Context context, Intent intent) {
             MyLog.e("----music broadcast receive");
             String action = intent.getAction();
             if (MusicService.MUSIC_COMPLETED.equals(action)){
                 //TODO 可以根据循环模式选择下一首,这里先直接调用下一首
+                MyLog.e("----music completed");
                 mMusicPos = (mMusicPos +1 )% mMusicLists.size();
-                startMusic();
+                MusicModel musicModel = mMusicLists.get(mMusicPos);
+                //这里不能直接启动PlayActivity,因为它可能没有创建
+                mMusicService.startPlay(musicModel.getPath());
+                //选择发送广播，如果能接受到那就是有，更新PlayActivity界面。
+                Intent broadcastIntent = new Intent();
+                broadcastIntent.setAction(PLAY_NEW_MUSIC);
+                broadcastIntent.putExtra(MUSIC_MODEL,musicModel);
+                LocalBroadcastManager.getInstance(MainActivity.this).sendBroadcast(broadcastIntent);
+//                startMusic();
             }
         }
     }
 
-    /**************************************/
-
+    /**************************************
+    权限相关函数
+    **************************************/
     final private int REQUEST_CODE_ASK_SDCARD_PERMISSIONS = 1;
     final private int REQUEST_CODE_ASK_PHONE_STATE_PERMISSIONS = 2;
     final private int REQUEST_CODE_ASK_SMS_RECEIVE_PERMISSIONS = 3;
@@ -284,6 +308,7 @@ public class MainActivity extends AppCompatActivity {
                 .show();
     }
 
+    /**************************************/
     @Override
     protected void onStop() {
         MyLog.e("--- mainActivity stop");
@@ -293,11 +318,12 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         //下面这段可以让activity退出后结束service
-        Intent intent = new Intent(ContextUtil.getInstance(), MusicService.class);
-        stopService(intent);
+//        Intent intent = new Intent(ContextUtil.getInstance(), MusicService.class);
+//        stopService(intent);
+        unbindService(conn);
         EventBus.getDefault().unregister(this);
         LocalBroadcastManager.getInstance(this).unregisterReceiver(mMusicBroadcastReceiver);
-        MyLog.e("-- MainActivity stop, and stop service");
+        MyLog.e("-- MainActivity stop");
         super.onDestroy();
     }
 

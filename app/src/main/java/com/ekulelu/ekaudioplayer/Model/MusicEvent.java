@@ -10,6 +10,7 @@ public class MusicEvent {
     public static final int MUSIC_COMPLETED = 3;
     public static final int CALL_STATE_RINGING = 4;
     public static final int SMS_RECEIVED = 5;
+    public static final int ACTION_NEW_OUTGOING_CALL = 6;
 
 
     private int action;
