@@ -8,7 +8,7 @@
         android:id="@+id/text_view_music_title"
         android:layout_width="wrap_content"
         android:layout_height="@dimen/item_height"
-        android:textColor="@color/color_list_item"
+        android:textColor="@color/color_list_item_title"
         android:layout_centerVertical="true"
         android:textSize="@dimen/item_title_text_size"
         android:layout_alignParentStart="true"
@@ -26,12 +26,14 @@
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
             android:textSize="@dimen/item_artist_text_size"
+            android:textColor="@color/color_list_item_title"
             android:layout_marginRight="@dimen/item_artist_margin_end"/>
         <com.ekulelu.ekaudioplayer.common.AlwaysMarqueeTextView
             android:id="@+id/text_view_album"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/title"
+            android:textColor="@color/color_list_item_album"
             android:layout_toEndOf="@+id/text_view_artist"
             android:layout_alignParentEnd="true"
             android:textAlignment="textEnd"

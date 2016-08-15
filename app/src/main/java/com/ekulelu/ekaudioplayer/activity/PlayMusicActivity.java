@@ -7,6 +7,7 @@ import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
+import android.os.Message;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 import android.widget.ImageButton;
@@ -20,6 +21,10 @@ import com.ekulelu.ekaudioplayer.util.ContextUtil;
 import com.ekulelu.ekaudioplayer.util.MyLog;
 
 import org.greenrobot.eventbus.EventBus;
+import org.greenrobot.eventbus.Subscribe;
+
+import java.util.Timer;
+import java.util.TimerTask;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -30,7 +35,11 @@ import butterknife.OnClick;
  */
 public class PlayMusicActivity extends AppCompatActivity{
 
-    private final int FAST_TIME = 3000;
+    private final int FAST_TIME = 5000;
+
+    private final int FRESH_WEIGETS = 0x1000;
+
+    private final int MSM_REPLAY_TIME = 3000;
 
     @BindView(R.id.text_view_music_title)
     TextView mTvMusicTitle;
@@ -56,23 +65,21 @@ public class PlayMusicActivity extends AppCompatActivity{
     @BindView(R.id.text_view_time)
     TextView mTime;
 
-
-
-
     private MusicService mMusicService;
-
 
     private MusicModel mMusicModel;
 
-    private Handler handler = new Handler();
+    private Handler mHandlerTime = new Handler();
 
     private boolean mRun;
+
+    private ServiceConnection conn;
 
     private Runnable myRunnable= new Runnable() {
         public void run() {
 
             if (mRun) {
-                handler.postDelayed(this, 1000);
+                mHandlerTime.postDelayed(this, 1000);
                 int time = (int) (mMusicService.getCurrentPosition() * 0.001);
                 int minute = (time / 60);
                 int second = (time % 60);
@@ -82,6 +89,15 @@ public class PlayMusicActivity extends AppCompatActivity{
         }
     };
 
+    private Handler mHandleMainThread = new Handler(){
+        @Override
+        public void handleMessage(Message msg) {
+            super.handleMessage(msg);
+            if (msg.what == FRESH_WEIGETS) {
+                initWidgets();
+            }
+        }
+    };
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
@@ -95,30 +111,43 @@ public class PlayMusicActivity extends AppCompatActivity{
         //一定要先赋值musicModel模型再绑定模型
         bindMusicService();
 
+        EventBus.getDefault().register(this);
 
 
     }
 
     @Override
     protected void onNewIntent(Intent intent) {
+        MyLog.e("----new intent");
         mMusicModel = (MusicModel) intent.getSerializableExtra(MainActivity.MUSIC_MODEL);
         startMusic();
     }
 
     private void initWidgets() {
         mTvMusicTitle.setText(mMusicModel.getTitle());
+        if (mMusicService.isPlaying()) {
+            mImgBtnPlay.setImageResource(android.R.drawable.ic_media_pause);
+        } else {
+            mImgBtnPlay.setImageResource(android.R.drawable.ic_media_play);
+        }
     }
 
     private void startMusic() {
         initWidgets();
         mMusicService.startPlay(mMusicModel.getPath());
         mRun = true;
-        handler.post(myRunnable);
+        mHandlerTime.post(myRunnable);
         mImgBtnPlay.setImageResource(android.R.drawable.ic_media_pause);
     }
+    private void pauseMusic() {
+        mMusicService.pausePlay();
+        mRun = false;
+        mImgBtnPlay.setImageResource(android.R.drawable.ic_media_play);
+    }
+
 
     private void bindMusicService() {
-        ServiceConnection conn = new ServiceConnection() {
+        conn = new ServiceConnection() {
             @Override
             public void onServiceDisconnected(ComponentName name) {
             }
@@ -135,6 +164,28 @@ public class PlayMusicActivity extends AppCompatActivity{
     }
 
 
+    @Subscribe
+    public void MusicEvent(MusicEvent event) {
+        int action = event.getAction();
+        MyLog.e("---event");
+        if (MusicEvent.CALL_STATE_RINGING == action) {
+            pauseMusic();
+            MyLog.e("--playActivity receive pause");
+            mRun = false;
+            mImgBtnPlay.setImageResource(android.R.drawable.ic_media_play);
+        } else if (MusicEvent.SMS_RECEIVED == action) {
+            pauseMusic();
+            TimerTask timerTask = new TimerTask() {
+                @Override
+                public void run() {
+                    Message msg = new Message();
+                    msg.what = FRESH_WEIGETS;
+                    mHandleMainThread.sendMessage(msg);
+                }
+            };
+            new Timer().schedule(timerTask,MSM_REPLAY_TIME);
+        }
+    }
 
     @Override
     protected void onStop() {
@@ -146,6 +197,7 @@ public class PlayMusicActivity extends AppCompatActivity{
     @Override
     protected void onDestroy() {
         MyLog.e("---MusicActivity Destroy");
+        unbindService(conn);  //6.0版本要自己unbind一下，否则会报错
         super.onDestroy();
     }
 
@@ -161,9 +213,7 @@ public class PlayMusicActivity extends AppCompatActivity{
         if(mMusicService.isPause()) {
             startMusic();
         } else {
-            mMusicService.pausePlay();
-            mRun = false;
-            mImgBtnPlay.setImageResource(android.R.drawable.ic_media_play);
+            pauseMusic();
         }
     }
 
@@ -205,19 +255,4 @@ public class PlayMusicActivity extends AppCompatActivity{
         // TODO call server...
         MyLog.e("" + mMusicService.isPlaying());
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 }

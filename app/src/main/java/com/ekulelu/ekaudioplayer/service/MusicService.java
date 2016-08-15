@@ -4,18 +4,18 @@ import android.app.Service;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.media.MediaPlayer;
 import android.os.Binder;
 import android.os.IBinder;
-import android.provider.Telephony;
 import android.support.annotation.Nullable;
 import android.support.v4.content.LocalBroadcastManager;
-import android.telephony.PhoneStateListener;
 import android.telephony.TelephonyManager;
 
-import com.ekulelu.ekaudioplayer.activity.MainActivity;
-import com.ekulelu.ekaudioplayer.util.ContextUtil;
+import com.ekulelu.ekaudioplayer.Model.MusicEvent;
 import com.ekulelu.ekaudioplayer.util.MyLog;
+
+import org.greenrobot.eventbus.EventBus;
 
 import java.io.IOException;
 
@@ -30,7 +30,7 @@ public class MusicService extends Service implements MediaPlayer.OnCompletionLis
 //    public static String ACTION_STOP = "com.ekulelu.ekaudioplayer.action.PLAY";
 //    public static String ACTION_SEEK_TO_TIME = "com.ekulelu.ekaudioplayer.action.SEEK_TO_TIME";
 //    public static String IS_RESTART = "com.ekulelu.ekaudioplayer.action.IS_RESTART";
-    public static final String MUSCI_COMPLETED = "com.ekulelu.ekaudioplayer.action.MusicComplete";
+    public static final String MUSIC_COMPLETED = "com.ekulelu.ekaudioplayer.action.MusicComplete";
 
     private final IBinder binder = new LocalBinder();
 
@@ -39,6 +39,7 @@ public class MusicService extends Service implements MediaPlayer.OnCompletionLis
     private boolean mIsPause = true;
     private boolean mIsPlayCompleted = false;
 
+    private MyPhoneStateListener mMyPhoneStateListener;
     @Override
     public void onCreate() {
         super.onCreate();
@@ -46,6 +47,12 @@ public class MusicService extends Service implements MediaPlayer.OnCompletionLis
         mMediaPlayer.setOnCompletionListener(this);
         mLastFilePath = "";
         MyLog.e("----service create");
+
+        mMyPhoneStateListener = new MyPhoneStateListener();
+        IntentFilter intentFilter = new IntentFilter();
+        intentFilter.addAction(TelephonyManager.ACTION_PHONE_STATE_CHANGED);
+        intentFilter.addAction("android.provider.Telephony.SMS_RECEIVED");
+        registerReceiver(mMyPhoneStateListener, intentFilter);
     }
 
     @Nullable
@@ -60,7 +67,7 @@ public class MusicService extends Service implements MediaPlayer.OnCompletionLis
         //TODO 发送歌曲播放完毕的广播
         mIsPlayCompleted = true;
         Intent intent = new Intent();
-        intent.setAction(MUSCI_COMPLETED);
+        intent.setAction(MUSIC_COMPLETED);
         //sendBroadcast(intent);
         //发送应用内广播
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
@@ -116,6 +123,7 @@ public class MusicService extends Service implements MediaPlayer.OnCompletionLis
     public void onDestroy() {
         mMediaPlayer.stop();
         mMediaPlayer.release();  //release the MediaPlayer
+        unregisterReceiver(mMyPhoneStateListener);
         MyLog.e("---music service stops");
         super.onDestroy();
     }
@@ -257,6 +265,7 @@ public class MusicService extends Service implements MediaPlayer.OnCompletionLis
                 pausePlay();
             } else if (SMS_RECEIVED_ACTION.equals(intent.getAction())) { //收到短信
                 pausePlay();
+                EventBus.getDefault().post(new MusicEvent(MusicEvent.SMS_RECEIVED));
                 try {
                     Thread.sleep(2000);
                 } catch (InterruptedException e) {
@@ -271,6 +280,7 @@ public class MusicService extends Service implements MediaPlayer.OnCompletionLis
                 switch (tm.getCallState()) {
                     case TelephonyManager.CALL_STATE_RINGING://标识当前是来电
                         pausePlay();
+                        EventBus.getDefault().post(new MusicEvent(MusicEvent.CALL_STATE_RINGING));
                         break;
                     case TelephonyManager.CALL_STATE_OFFHOOK://接通
 

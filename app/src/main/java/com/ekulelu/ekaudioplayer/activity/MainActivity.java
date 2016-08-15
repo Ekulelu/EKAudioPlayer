@@ -2,16 +2,13 @@ package com.ekulelu.ekaudioplayer.activity;
 
 import android.Manifest;
 import android.content.BroadcastReceiver;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.os.Environment;
-import android.os.IBinder;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
@@ -69,6 +66,12 @@ public class MainActivity extends AppCompatActivity {
         ContextUtil.getInstance().getContentResolver().notifyChange(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,null);
         checkPermission(REQUEST_CODE_ASK_SDCARD_PERMISSIONS,Manifest.permission.WRITE_EXTERNAL_STORAGE,
                 getString(R.string.request_sdcard_permission_message)); //SD卡权限
+        int hasPermission = ContextCompat.checkSelfPermission(this,Manifest.permission.WRITE_EXTERNAL_STORAGE);
+        if (hasPermission != PackageManager.PERMISSION_GRANTED) {
+            MyToast.showShortText(getString(R.string.fail_to_access_sdcard));
+        } else {
+            initData();
+        }
         checkPermission(REQUEST_CODE_ASK_PHONE_STATE_PERMISSIONS,Manifest.permission.READ_PHONE_STATE,
                 getString(R.string.request_phone_state_permission_message)); //通话状态权限
         checkPermission(REQUEST_CODE_ASK_SMS_RECEIVE_PERMISSIONS,Manifest.permission.RECEIVE_SMS,
@@ -84,8 +87,9 @@ public class MainActivity extends AppCompatActivity {
 
         mMusicBroadcastReceiver = new MusicBroadcastReceiver();
         IntentFilter intentFilter = new IntentFilter();
-        intentFilter.addAction(MusicService.MUSCI_COMPLETED);
+        intentFilter.addAction(MusicService.MUSIC_COMPLETED);
         LocalBroadcastManager.getInstance(this).registerReceiver(mMusicBroadcastReceiver, intentFilter);
+
 
 
         Intent intent = new Intent(ContextUtil.getInstance(), MusicService.class);
@@ -127,9 +131,10 @@ public class MainActivity extends AppCompatActivity {
                 while (cursor.moveToNext()) {
                     String path = cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA));
                     String ar = cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST));
-                    if (!path.endsWith(getString(R.string.music_suffix_filter)) || null == ar || ar.equals("下川みくに")) {
+                    if (!path.endsWith(getString(R.string.music_suffix_filter)) ) {
                         continue;
                     }
+                    //|| null == ar || ar.equals("下川みくに")
                     MusicModel model = new MusicModel();
                     model.setId(cursor.getInt(cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)));
                     model.setArtist(cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)));
@@ -175,23 +180,27 @@ public class MainActivity extends AppCompatActivity {
         switch (event.getAction()) {
             case MusicEvent.NEXT:
                 mMusicPos = (mMusicPos +1 )% mMusicLists.size();
+                startMusic();
                 break;
             case MusicEvent.PREVIOUS:
                 mMusicPos--;
                 if (mMusicPos < 0){
                     mMusicPos = 0;
                 }
+                startMusic();
             default:
         }
-        startMusic();
+
     }
 
 
     public class MusicBroadcastReceiver extends BroadcastReceiver {
+
         @Override
         public void onReceive(Context context, Intent intent) {
+            MyLog.e("----music broadcast receive");
             String action = intent.getAction();
-            if (MusicService.MUSCI_COMPLETED.equals(action)){
+            if (MusicService.MUSIC_COMPLETED.equals(action)){
                 //TODO 可以根据循环模式选择下一首,这里先直接调用下一首
                 mMusicPos = (mMusicPos +1 )% mMusicLists.size();
                 startMusic();
@@ -209,9 +218,9 @@ public class MainActivity extends AppCompatActivity {
     private void checkPermission(final int requestCode, final String permission, String rationale) {
         //检查权限
         //TODO 逻辑需要修改
-        int hasWriteContactsPermission = ContextCompat.checkSelfPermission(this,permission);
+        int hasPermission = ContextCompat.checkSelfPermission(this,permission);
 
-        if (hasWriteContactsPermission != PackageManager.PERMISSION_GRANTED) {
+        if (hasPermission != PackageManager.PERMISSION_GRANTED) {
             if (ActivityCompat.shouldShowRequestPermissionRationale(MainActivity.this,
                     permission)) {
                 showMessageOKCancel(rationale,
@@ -230,7 +239,6 @@ public class MainActivity extends AppCompatActivity {
                     requestCode);
             return;
         }
-        initData();
     }
 
     @Override
@@ -246,21 +254,18 @@ public class MainActivity extends AppCompatActivity {
                 break;
             case REQUEST_CODE_ASK_PHONE_STATE_PERMISSIONS:
                 if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    initData();
                 } else {
                     MyToast.showShortText(getString(R.string.fail_to_obtain_phone_state_permission));
                 }
                 break;
             case REQUEST_CODE_ASK_OUT_GOING_CALL_PERMISSIONS:
                 if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    initData();
                 } else {
                     MyToast.showShortText(getString(R.string.fail_to_obtain_out_going_call_permission));
                 }
                 break;
             case REQUEST_CODE_ASK_SMS_RECEIVE_PERMISSIONS:
                 if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    initData();
                 } else {
                     MyToast.showShortText(getString(R.string.fail_to_obtain_sms_receive_permission));
                 }
@@ -281,12 +286,20 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onStop() {
+        MyLog.e("--- mainActivity stop");
+        super.onStop();
+    }
+
+    @Override
+    protected void onDestroy() {
         //下面这段可以让activity退出后结束service
         Intent intent = new Intent(ContextUtil.getInstance(), MusicService.class);
         stopService(intent);
         EventBus.getDefault().unregister(this);
         LocalBroadcastManager.getInstance(this).unregisterReceiver(mMusicBroadcastReceiver);
         MyLog.e("-- MainActivity stop, and stop service");
-        super.onStop();
+        super.onDestroy();
     }
+
+
 }
