@@ -24,12 +24,6 @@ import java.io.IOException;
  */
 public class MusicService extends Service implements MediaPlayer.OnCompletionListener {
 
-//    public static String ACTION_MODE = "com.ekulelu.ekaudioplayer.action.ACTION_MODE";
-//    public static String ACTION_PLAY = "com.ekulelu.ekaudioplayer.action.PLAY";
-//    public static String ACTION_PAUSE = "com.ekulelu.ekaudioplayer.action.PAUSE";
-//    public static String ACTION_STOP = "com.ekulelu.ekaudioplayer.action.PLAY";
-//    public static String ACTION_SEEK_TO_TIME = "com.ekulelu.ekaudioplayer.action.SEEK_TO_TIME";
-//    public static String IS_RESTART = "com.ekulelu.ekaudioplayer.action.IS_RESTART";
     public static final String MUSIC_COMPLETED = "com.ekulelu.ekaudioplayer.action.MusicComplete";
 
     private final IBinder binder = new LocalBinder();
@@ -75,47 +69,6 @@ public class MusicService extends Service implements MediaPlayer.OnCompletionLis
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-//        String actionMode = intent.getStringExtra(MusicService.ACTION_MODE);
-//        boolean isRestart = intent.getBooleanExtra(MusicService.IS_RESTART, false);
-//        if (ACTION_PLAY.equals(actionMode)) {
-//            String filePath = intent.getStringExtra(MainActivity.MEDIA_FILE_PATH);
-//            if (!mLastFilePath.equals(filePath)) {  //说明换了歌曲
-//                try {
-//                    mMediaPlayer.stop();
-//                    if (!mLastFilePath.equals(filePath)) {
-//                        mMediaPlayer.reset();
-//                    }
-//                    mMediaPlayer.setDataSource(filePath);
-//                    mMediaPlayer.prepare();
-//                    mMediaPlayer.start();
-//                    MyLog.e("start");
-//                } catch (IOException e) {
-//                    e.printStackTrace();
-//                }
-//            } else if (mIsPause && !isRestart) { //pause - start
-//                mMediaPlayer.start();
-//                MyLog.e("pause - start");
-//            } else {
-//                mMediaPlayer.start();  //restart
-//                MyLog.e("restart");
-//            }
-//            mIsPause = false;
-//            mLastFilePath = filePath;
-//        } else if (ACTION_PAUSE.equals(actionMode)) {
-//            mMediaPlayer.pause();
-//            mIsPause = true;
-//            MyLog.e("pause");
-//        } else if (ACTION_STOP.equals(actionMode)) {
-//            mMediaPlayer.stop();
-//            mIsPause = true;
-//        } else if (ACTION_SEEK_TO_TIME.equals(actionMode)) {
-//            int seekTime = intent.getIntExtra(MainActivity.MEDIA_SEEK_TIME, -1);
-//            if (seekTime == -1) {
-//                return super.onStartCommand(intent, flags, startId);
-//            }
-//            mMediaPlayer.seekTo(seekTime * 1000);
-//            mIsPause = false;
-//        }
         return super.onStartCommand(intent, flags, startId);
     }
 
@@ -255,7 +208,7 @@ public class MusicService extends Service implements MediaPlayer.OnCompletionLis
 
 
 
-    //这次注册在了manifest里面。
+    //这种内部类必须要动态注册，否则会新建不了类
     public class MyPhoneStateListener extends BroadcastReceiver {
         public static final String SMS_RECEIVED_ACTION = "android.provider.Telephony.SMS_RECEIVED";
 

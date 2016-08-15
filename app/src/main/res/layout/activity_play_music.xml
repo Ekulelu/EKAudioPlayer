@@ -64,7 +64,11 @@
         android:textSize="@dimen/time_text_size"
         />
 
-
+    <SeekBar
+        android:id="@+id/pro_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        />
 
     <RelativeLayout
         android:layout_width="match_parent"
