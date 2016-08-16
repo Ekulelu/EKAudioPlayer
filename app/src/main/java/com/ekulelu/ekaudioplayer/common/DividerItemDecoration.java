@@ -11,8 +11,7 @@ import android.support.v7.widget.RecyclerView;
 import android.view.View;
 
 import com.ekulelu.ekaudioplayer.R;
-import com.ekulelu.ekaudioplayer.util.ContextUtil;
-import com.ekulelu.ekaudioplayer.util.MyLog;
+
 
 /** 负责RecyclerView的分割线
  * Created by aahu on 2016/8/11 0011.
@@ -34,12 +33,14 @@ public class DividerItemDecoration extends RecyclerView.ItemDecoration{
 
     private int mOrientation;
 
-    public DividerItemDecoration(int orientation) {
-        final TypedArray a = ContextUtil.getInstance().getBaseContext().obtainStyledAttributes(ATTRS);
+    public DividerItemDecoration(Context context, int orientation) {
+
+        final TypedArray a = context.getApplicationContext().obtainStyledAttributes(ATTRS);
         mDivider = a.getDrawable(0);
         a.recycle();
         setOrientation(orientation);
-        mDivider.setColorFilter(ContextUtil.getInstance().getResources().getColor(R.color.color_divider_bg), PorterDuff.Mode.ADD);
+//        mDivider.setColorFilter(Color.RED, PorterDuff.Mode.ADD);
+        mDivider.setColorFilter(context.getResources().getColor(R.color.colorPrimaryDark), PorterDuff.Mode.ADD);
     }
 
     /**
@@ -60,7 +61,7 @@ public class DividerItemDecoration extends RecyclerView.ItemDecoration{
      * @param state
      */
     @Override
-    public void onDraw(Canvas c, RecyclerView parent,RecyclerView.State state) {
+    public void onDraw(Canvas c, RecyclerView parent, RecyclerView.State state) {
 
         if (mOrientation == VERTICAL_LIST) {
             drawVertical(c, parent);

@@ -30,7 +30,8 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_below="@+id/toolbar">
-        <com.ekulelu.ekaudioplayer.common.MusicList
+        <!--<com.ekulelu.ekaudioplayer.common.MusicList-->
+        <com.ekulelu.ekaudioplayer.common.MusicRecyclerView
             android:id="@+id/recycler_view_music_list"
             android:dividerHeight="10dp"
             android:layout_width="match_parent"

@@ -26,8 +26,10 @@ import android.view.View;
 
 import com.ekulelu.ekaudioplayer.Model.MusicEvent;
 import com.ekulelu.ekaudioplayer.Model.MusicModel;
+import com.ekulelu.ekaudioplayer.common.EKRecyclerView;
 import com.ekulelu.ekaudioplayer.common.MusicList;
 import com.ekulelu.ekaudioplayer.R;
+import com.ekulelu.ekaudioplayer.common.MusicRecyclerView;
 import com.ekulelu.ekaudioplayer.service.MusicService;
 import com.ekulelu.ekaudioplayer.util.ContextUtil;
 import com.ekulelu.ekaudioplayer.util.MyLog;
@@ -43,13 +45,16 @@ import butterknife.ButterKnife;
 /** App main activity, which shows a music list. The music list data is from content provider.
  * Created by aahu on 2016/8/11 0011.
  */
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements EKRecyclerView.OnItemClickLitener{
 
     public static String MUSIC_MODEL = "MusicModel";
     public static String PLAY_NEW_MUSIC = "NewMusic";
 
+//    @BindView(R.id.recycler_view_music_list)
+//    MusicList mRycvMusicList;
+
     @BindView(R.id.recycler_view_music_list)
-    MusicList mRycvMusicList;
+    MusicRecyclerView mRycvMusicList;
 
 
     private ArrayList<MusicModel> mMusicLists = new ArrayList<>();
@@ -65,6 +70,8 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         ButterKnife.bind(this);
         MyLog.e("----MainActivity create");
+
+
 
         //当在shell用rm删除文件的时候，并不会同步contentProvide，需要自己删除。
 //        Uri uri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, 51);
@@ -95,23 +102,37 @@ public class MainActivity extends AppCompatActivity {
         LocalBroadcastManager.getInstance(this).registerReceiver(mMusicBroadcastReceiver, intentFilter);
 
 
-        //TODO 下面这段抽出来
-        MusicList.MusicListAdapter adapter = (MusicList.MusicListAdapter) mRycvMusicList.getAdapter();
-        adapter.setmOnItemClickLitener(new MusicList.OnItemClickLitener() {
-            @Override
-            public void onItemClick(View view, int position) {
-                mMusicPos = position;
-                startMusic();
-            }
+        mRycvMusicList.setOnItemClickLitener(this);
 
-            @Override
-            public void onItemLongClick(View view, int position) {
-                MyToast.showShortText("长按了  "  + position);
-                mMusicService.pausePlay();
-            }
-        });
+        //TODO 下面这段抽出来
+//        MusicList.MusicListAdapter adapter = (MusicList.MusicListAdapter) mRycvMusicList.getAdapter();
+//        adapter.setmOnItemClickLitener(new MusicList.OnItemClickLitener() {
+//            @Override
+//            public void onItemClick(View view, int position) {
+//                mMusicPos = position;
+//                startMusic();
+//            }
+//
+//            @Override
+//            public void onItemLongClick(View view, int position) {
+//                MyToast.showShortText("长按了  "  + position);
+//                mMusicService.pausePlay();
+//            }
+//        });
     }
 
+
+    @Override
+    public void onItemClick(View view, int position) {
+        mMusicPos = position;
+        startMusic();
+    }
+
+    @Override
+    public void onItemLongClick(View view, int position) {
+//        MyToast.showShortText("停止播放"  + position);
+        mMusicService.pausePlay();
+    }
 
     /**
      * 发送intent，启动PlayActivity。
