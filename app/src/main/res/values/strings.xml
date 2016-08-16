@@ -15,5 +15,8 @@
     <string name="ok">OK</string>
     <string name="no_music">没有找到歌曲</string>
     <string name="cancel">Cancel</string>
-    <string name="music_suffix_filter">mp3</string>
+    <string name="path_suffix_filter">mp3</string>
+    <string name="artist_filter_switch">true</string>
+    <string name="artist_filter">水樹奈々</string>
+    <string name="music_list_size">30</string>
 </resources>

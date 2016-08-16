@@ -134,13 +134,21 @@ public class MainActivity extends AppCompatActivity {
                     null, null, null);
 
             if (cursor != null) {
+                String artistFilter = getString(R.string.artist_filter);
+                String pathSuffixFilter = getString(R.string.path_suffix_filter);
+                int musicListSize = Integer.parseInt(getString(R.string.music_list_size));
                 while (cursor.moveToNext()) {
                     String path = cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA));
                     String ar = cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST));
-                    if (!path.endsWith(getString(R.string.music_suffix_filter)) ) {
+                    if (!path.endsWith(pathSuffixFilter)) {
                         continue;
                     }
-                    //|| null == ar || ar.equals("下川みくに")
+                    boolean artistFilterSwitch = Boolean.parseBoolean(getString(R.string.artist_filter_switch));
+
+                    if (artistFilterSwitch && (null == ar || !ar.equals(artistFilter))) {
+                        continue;
+                    }
+
                     MusicModel model = new MusicModel();
                     model.setId(cursor.getInt(cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)));
                     model.setArtist(cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)));
@@ -149,7 +157,8 @@ public class MainActivity extends AppCompatActivity {
                     model.setTitle(cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)));
                     model.setPath(cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)));
                     mMusicLists.add(model);
-                    if (mMusicLists.size() > 20) {
+
+                    if (mMusicLists.size() >= musicListSize) {
                         break;
                     }
                 }
@@ -219,7 +228,8 @@ public class MainActivity extends AppCompatActivity {
                 MyLog.e("----music completed");
                 mMusicPos = (mMusicPos +1 )% mMusicLists.size();
                 MusicModel musicModel = mMusicLists.get(mMusicPos);
-                //这里不能直接启动PlayActivity,因为它可能没有创建
+                //这里不能直接启动PlayActivity,因为它可能没有显示，没有显示的时候，可能被destroy掉了，
+                // 所以要调用service的方法播放音乐。
                 mMusicService.startPlay(musicModel.getPath());
                 //选择发送广播，如果能接受到那就是有，更新PlayActivity界面。
                 Intent broadcastIntent = new Intent();
