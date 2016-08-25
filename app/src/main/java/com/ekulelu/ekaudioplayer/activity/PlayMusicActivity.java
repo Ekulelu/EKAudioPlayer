@@ -6,6 +6,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.ServiceConnection;
+import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -21,6 +22,7 @@ import com.ekulelu.ekaudioplayer.Model.MusicEvent;
 import com.ekulelu.ekaudioplayer.Model.MusicModel;
 import com.ekulelu.ekaudioplayer.R;
 import com.ekulelu.ekaudioplayer.service.MusicService;
+import com.ekulelu.ekaudioplayer.util.AlbumCover;
 import com.ekulelu.ekaudioplayer.util.ContextUtil;
 import com.ekulelu.ekaudioplayer.util.MyLog;
 
@@ -85,7 +87,6 @@ public class PlayMusicActivity extends AppCompatActivity implements SeekBar.OnSe
     private MusicModel mMusicModel;
 
     private ServiceConnection mConn;
-
 
     /**
      * 负责后台调用更新时间
@@ -179,17 +180,6 @@ public class PlayMusicActivity extends AppCompatActivity implements SeekBar.OnSe
         if (mMusicService != null && mMusicService.isPlaying()) {
             startTimer();  //处理从stop状态到running的情况。
         }
-
-//        if (mTimerTask != null) {
-//            mTimerTask.cancel();
-//        }
-//        mTimerTask = new MyTimerTask();
-//        if (mTimer == null) {
-//            mTimer = new Timer();
-//        } else {
-//            mTimer.purge(); //清空timer里面已经取消的timerTask
-//        }
-//        mTimer.schedule(mTimerTask,0,1000); //开启计时器计时
     }
 
     /**
@@ -215,7 +205,6 @@ public class PlayMusicActivity extends AppCompatActivity implements SeekBar.OnSe
             msg.what = FLAG_FRESH_TIME;
             mCurrentPosInSecond+=1;
             mHandleMainThread.sendMessage(msg);
-//            MyLog.e("----timer thread" +Thread.currentThread() );
         }
     }
 
@@ -235,6 +224,7 @@ public class PlayMusicActivity extends AppCompatActivity implements SeekBar.OnSe
      */
     private void updateWidgets() {
         mTvMusicTitle.setText(mMusicModel.getTitle());
+        mImgBtnCover.setImageBitmap(AlbumCover.getArtwork(this,mMusicModel.getId(),mMusicModel.getAlbumId(),true));
         if (mMusicService.isPlaying()) {
             mImgBtnPlay.setImageResource(android.R.drawable.ic_media_pause);
         } else {
@@ -248,24 +238,21 @@ public class PlayMusicActivity extends AppCompatActivity implements SeekBar.OnSe
      * 这个方法会调用service的方法，开始播放音乐。
      */
     private void startPlayMusic() {
-        updateWidgets();
-//        //timer不计时的话，只需取消TimerTask即可，和iOS不一样。
-//        if (mTimerTask != null) {
-//            mTimerTask.cancel();
-//        }
-//        mTimerTask = new MyTimerTask();
-//        if (mTimer == null) {
-//            mTimer = new Timer();
-//        } else {
-//            mTimer.purge(); //清空timer里面已经取消的timerTask
-//        }
-//        mTimer.schedule(mTimerTask,0,1000); //开启计时器计时
         startTimer();
         mSeekBar.setMax((int)(mMusicModel.getDuration() * 0.001));
         mMusicService.startPlay(mMusicModel.getPath());
-        mCurrentPosInSecond = (int) (mMusicService.getCurrentPosition() * 0.001);
+        mCurrentPosInSecond = (int) (mMusicService.getCurrentPosition() * 0.001); //播放一半后再进入的时候可以在准确的进度上。
+        updateWidgets(); //开启播放后再调用这个。
+    }
 
+    /**
+     * 恢复播放，开始Timer。
+     */
+    private void resumeMusic() {
         mImgBtnPlay.setImageResource(android.R.drawable.ic_media_pause);
+        startTimer();
+        mMusicService.startPlay(mMusicModel.getPath());
+        mMusicService.seekToTime(mCurrentPosInSecond * 1000);  //暂停后拖动进度条的情况。
     }
 
     /**
@@ -273,8 +260,7 @@ public class PlayMusicActivity extends AppCompatActivity implements SeekBar.OnSe
      */
     private void pauseMusic() {
         mMusicService.pausePlay();
-        mTimerTask.cancel();
-        mTimer.purge();
+        stopTimer();
         mImgBtnPlay.setImageResource(android.R.drawable.ic_media_play);
     }
 
@@ -312,9 +298,11 @@ public class PlayMusicActivity extends AppCompatActivity implements SeekBar.OnSe
     }
 
     private void stopTimer() {
-        mTimerTask.cancel(); //Android的是要timerTask cancel掉后就可以了，timer不用cancel
-        mTimerTask = null;  //这里约定：timerTask为null说明不没有启动timer
-        mTimer.purge();
+        if(mTimerTask != null) {
+            mTimerTask.cancel(); //Android的是要timerTask cancel掉后就可以了，timer不用cancel
+            mTimerTask = null;  //这里约定：timerTask为null说明不没有启动timer
+            mTimer.purge();
+        }
     }
 
 
@@ -324,14 +312,10 @@ public class PlayMusicActivity extends AppCompatActivity implements SeekBar.OnSe
     @Subscribe
     public void MusicEvent(MusicEvent event) {
         int action = event.getAction();
-//        MyLog.e("----event thread" +Thread.currentThread() );
         MyLog.e("---event from tel or sms");
         if (MusicEvent.CALL_STATE_RINGING == action || MusicEvent.ACTION_NEW_OUTGOING_CALL == action) { //有电话来了或者打电话
             updateWidgets();
             MyLog.e("--playActivity receive pause");
-//            mTimerTask.cancel(); //Android的是要timerTask cancel掉后就可以了，timer不用cancel
-//            mTimerTask = null;  //为null说明不启动
-//            mTimer.purge();
             stopTimer();
             mImgBtnPlay.setImageResource(android.R.drawable.ic_media_play);
         } else if (MusicEvent.SMS_RECEIVED == action) {
@@ -342,7 +326,6 @@ public class PlayMusicActivity extends AppCompatActivity implements SeekBar.OnSe
                     Message msg = new Message();
                     msg.what = FLAG_FRESH_WIDGETS;
                     mHandleMainThread.sendMessage(msg);
-//                    MyLog.e("----timer thread" +Thread.currentThread() );
                 }
             };  //开一个timer，在一定延时之后重新播放音乐。
             new Timer().schedule(timerTask,MSM_REPLAY_TIME);
@@ -352,12 +335,9 @@ public class PlayMusicActivity extends AppCompatActivity implements SeekBar.OnSe
     @Override
     protected void onStop() {
         MyLog.e("---MusicActivity stop");
-//        mTimerTask.cancel();
-//        mTimer.purge();
         stopTimer();
         mTimer.cancel();
         mTimer = null;
-
         super.onStop();
     }
 
@@ -375,7 +355,6 @@ public class PlayMusicActivity extends AppCompatActivity implements SeekBar.OnSe
     @Override
     public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
         if (fromUser) {
-//            MyLog.e("---progress" + progress *1000);
             mMusicService.seekToTime(progress * 1000);
             mCurrentPosInSecond = progress;
             setTvTime(); //要先改了mCurrentPosInSecond再调用
@@ -384,8 +363,6 @@ public class PlayMusicActivity extends AppCompatActivity implements SeekBar.OnSe
 
     @Override
     public void onStartTrackingTouch(SeekBar seekBar) {
-//        mTimerTask.cancel();
-//        mTimer.purge();
         stopTimer();
     }
 
@@ -394,7 +371,9 @@ public class PlayMusicActivity extends AppCompatActivity implements SeekBar.OnSe
     public void onStopTrackingTouch(SeekBar seekBar) {
 //        mTimerTask = new MyTimerTask();
 //        mTimer.schedule(mTimerTask,0,1000);
-        startTimer();
+        if (mMusicService.isPlaying()) {  //必须是在播放的时候才开启计时器
+            startTimer();
+        }
     }
 
 
@@ -405,7 +384,8 @@ public class PlayMusicActivity extends AppCompatActivity implements SeekBar.OnSe
 
     @OnClick(R.id.img_btn_play_pause) void onClickPlayOrPause() {
         if(mMusicService.isPause()) {
-            startPlayMusic();
+            resumeMusic();
+//            startPlayMusic();
         } else {
             pauseMusic();
         }

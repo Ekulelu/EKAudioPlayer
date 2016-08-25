@@ -27,7 +27,6 @@ import android.view.View;
 import com.ekulelu.ekaudioplayer.Model.MusicEvent;
 import com.ekulelu.ekaudioplayer.Model.MusicModel;
 import com.ekulelu.ekaudioplayer.common.EKRecyclerView;
-import com.ekulelu.ekaudioplayer.common.MusicList;
 import com.ekulelu.ekaudioplayer.R;
 import com.ekulelu.ekaudioplayer.common.MusicRecyclerView;
 import com.ekulelu.ekaudioplayer.service.MusicService;
@@ -104,7 +103,7 @@ public class MainActivity extends AppCompatActivity implements EKRecyclerView.On
 
         mRycvMusicList.setOnItemClickLitener(this);
 
-        //TODO 下面这段抽出来
+        //下面这段抽出来了，不用了
 //        MusicList.MusicListAdapter adapter = (MusicList.MusicListAdapter) mRycvMusicList.getAdapter();
 //        adapter.setmOnItemClickLitener(new MusicList.OnItemClickLitener() {
 //            @Override
@@ -166,14 +165,15 @@ public class MainActivity extends AppCompatActivity implements EKRecyclerView.On
                     }
                     boolean artistFilterSwitch = Boolean.parseBoolean(getString(R.string.artist_filter_switch));
 
-                    if (artistFilterSwitch && (null == ar || !ar.equals(artistFilter))) {
+                    if (artistFilterSwitch && ar != null && !ar.isEmpty() && !ar.equals(artistFilter)) {
                         continue;
                     }
 
                     MusicModel model = new MusicModel();
-                    model.setId(cursor.getInt(cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)));
+                    model.setId(cursor.getLong(cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)));
                     model.setArtist(cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)));
                     model.setAlbum(cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM)));
+                    model.setAlbumId(cursor.getLong(cursor.getColumnIndexOrThrow( MediaStore.Audio.Media.ALBUM_ID)));
                     model.setDuration(cursor.getInt(cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)));
                     model.setTitle(cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)));
                     model.setPath(cursor.getString(cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)));
@@ -186,7 +186,8 @@ public class MainActivity extends AppCompatActivity implements EKRecyclerView.On
                 cursor.close();
             }
         }
-//        Uri uri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, 58);
+//       Uri uri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, 158);
+//        MyLog.e("---%%%%%%%%%%%%%-" + uri.toString());
 //        ContextUtil.getInstance().getContentResolver().delete(uri, null, null);
         mRycvMusicList.setmData(mMusicLists);
         if (0 == mMusicLists.size()) {
@@ -272,7 +273,7 @@ public class MainActivity extends AppCompatActivity implements EKRecyclerView.On
 
     private void checkPermission(final int requestCode, final String permission, String rationale) {
         //检查权限
-        //TODO 逻辑需要修改
+        //TODO 处理用户选择了不再弹窗的情况
         int hasPermission = ContextCompat.checkSelfPermission(this,permission);
 
         if (hasPermission != PackageManager.PERMISSION_GRANTED) {

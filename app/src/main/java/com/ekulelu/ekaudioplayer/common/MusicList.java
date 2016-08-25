@@ -18,11 +18,11 @@ import com.ekulelu.ekaudioplayer.R;
 import java.util.ArrayList;
 
 
-/**
+/** RecyclerView封装完了，用MusicRecyclerView代替，这个类不用了。
  * Created by aahu on 2016/8/11 0011.
  */
-//TODO 进一步封装
 
+@Deprecated
 public class MusicList extends RecyclerView{
 
 
