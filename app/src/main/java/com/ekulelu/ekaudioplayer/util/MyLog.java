@@ -57,7 +57,19 @@ public class MyLog {
         Log.e(mTAG,string);
     }
 
-    public static void e(int string) {
+    public static void e(int integer) {
+        Log.e(mTAG,"" + integer);
+    }
+
+    public static void e(long string) {
+        Log.e(mTAG,"" + string);
+    }
+
+    public static void e(double string) {
+        Log.e(mTAG,"" + string);
+    }
+
+    public static void e(boolean string) {
         Log.e(mTAG,"" + string);
     }
 
