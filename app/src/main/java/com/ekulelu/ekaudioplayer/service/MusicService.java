@@ -4,18 +4,19 @@ import android.app.Service;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.media.MediaPlayer;
 import android.os.Binder;
 import android.os.IBinder;
 import android.provider.Telephony;
 import android.support.annotation.Nullable;
 import android.support.v4.content.LocalBroadcastManager;
-import android.telephony.PhoneStateListener;
 import android.telephony.TelephonyManager;
 
-import com.ekulelu.ekaudioplayer.activity.MainActivity;
-import com.ekulelu.ekaudioplayer.util.ContextUtil;
+import com.ekulelu.ekaudioplayer.Model.MusicEvent;
 import com.ekulelu.ekaudioplayer.util.MyLog;
+
+import org.greenrobot.eventbus.EventBus;
 
 import java.io.IOException;
 
@@ -24,13 +25,7 @@ import java.io.IOException;
  */
 public class MusicService extends Service implements MediaPlayer.OnCompletionListener {
 
-//    public static String ACTION_MODE = "com.ekulelu.ekaudioplayer.action.ACTION_MODE";
-//    public static String ACTION_PLAY = "com.ekulelu.ekaudioplayer.action.PLAY";
-//    public static String ACTION_PAUSE = "com.ekulelu.ekaudioplayer.action.PAUSE";
-//    public static String ACTION_STOP = "com.ekulelu.ekaudioplayer.action.PLAY";
-//    public static String ACTION_SEEK_TO_TIME = "com.ekulelu.ekaudioplayer.action.SEEK_TO_TIME";
-//    public static String IS_RESTART = "com.ekulelu.ekaudioplayer.action.IS_RESTART";
-    public static final String MUSCI_COMPLETED = "com.ekulelu.ekaudioplayer.action.MusicComplete";
+    public static final String MUSIC_COMPLETED = "com.ekulelu.ekaudioplayer.action.MusicComplete";
 
     private final IBinder binder = new LocalBinder();
 
@@ -39,6 +34,11 @@ public class MusicService extends Service implements MediaPlayer.OnCompletionLis
     private boolean mIsPause = true;
     private boolean mIsPlayCompleted = false;
 
+    /**
+     * 用于监听系统的电话状态和短信状态
+     */
+    private MyPhoneStateListener mMyPhoneStateListener;
+
     @Override
     public void onCreate() {
         super.onCreate();
@@ -46,8 +46,19 @@ public class MusicService extends Service implements MediaPlayer.OnCompletionLis
         mMediaPlayer.setOnCompletionListener(this);
         mLastFilePath = "";
         MyLog.e("----service create");
+        mMyPhoneStateListener = new MyPhoneStateListener();
+        IntentFilter intentFilter = new IntentFilter();
+        intentFilter.addAction(TelephonyManager.ACTION_PHONE_STATE_CHANGED);
+        intentFilter.addAction(Intent.ACTION_NEW_OUTGOING_CALL);
+        intentFilter.addAction("android.provider.Telephony.SMS_RECEIVED");
+        registerReceiver(mMyPhoneStateListener, intentFilter);
     }
 
+    /**
+     * 用来在bind的时候返回对象
+     * @param intent
+     * @return
+     */
     @Nullable
     @Override
     public IBinder onBind(Intent intent) {
@@ -60,55 +71,13 @@ public class MusicService extends Service implements MediaPlayer.OnCompletionLis
         //TODO 发送歌曲播放完毕的广播
         mIsPlayCompleted = true;
         Intent intent = new Intent();
-        intent.setAction(MUSCI_COMPLETED);
-        //sendBroadcast(intent);
+        intent.setAction(MUSIC_COMPLETED);
         //发送应用内广播
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-//        String actionMode = intent.getStringExtra(MusicService.ACTION_MODE);
-//        boolean isRestart = intent.getBooleanExtra(MusicService.IS_RESTART, false);
-//        if (ACTION_PLAY.equals(actionMode)) {
-//            String filePath = intent.getStringExtra(MainActivity.MEDIA_FILE_PATH);
-//            if (!mLastFilePath.equals(filePath)) {  //说明换了歌曲
-//                try {
-//                    mMediaPlayer.stop();
-//                    if (!mLastFilePath.equals(filePath)) {
-//                        mMediaPlayer.reset();
-//                    }
-//                    mMediaPlayer.setDataSource(filePath);
-//                    mMediaPlayer.prepare();
-//                    mMediaPlayer.start();
-//                    MyLog.e("start");
-//                } catch (IOException e) {
-//                    e.printStackTrace();
-//                }
-//            } else if (mIsPause && !isRestart) { //pause - start
-//                mMediaPlayer.start();
-//                MyLog.e("pause - start");
-//            } else {
-//                mMediaPlayer.start();  //restart
-//                MyLog.e("restart");
-//            }
-//            mIsPause = false;
-//            mLastFilePath = filePath;
-//        } else if (ACTION_PAUSE.equals(actionMode)) {
-//            mMediaPlayer.pause();
-//            mIsPause = true;
-//            MyLog.e("pause");
-//        } else if (ACTION_STOP.equals(actionMode)) {
-//            mMediaPlayer.stop();
-//            mIsPause = true;
-//        } else if (ACTION_SEEK_TO_TIME.equals(actionMode)) {
-//            int seekTime = intent.getIntExtra(MainActivity.MEDIA_SEEK_TIME, -1);
-//            if (seekTime == -1) {
-//                return super.onStartCommand(intent, flags, startId);
-//            }
-//            mMediaPlayer.seekTo(seekTime * 1000);
-//            mIsPause = false;
-//        }
         return super.onStartCommand(intent, flags, startId);
     }
 
@@ -116,6 +85,7 @@ public class MusicService extends Service implements MediaPlayer.OnCompletionLis
     public void onDestroy() {
         mMediaPlayer.stop();
         mMediaPlayer.release();  //release the MediaPlayer
+        unregisterReceiver(mMyPhoneStateListener);
         MyLog.e("---music service stops");
         super.onDestroy();
     }
@@ -172,12 +142,6 @@ public class MusicService extends Service implements MediaPlayer.OnCompletionLis
      * @param isRestart should restart to play
      */
     public void startPlay(String filePath, boolean isRestart) {
-//        Intent intent = new Intent(ContextUtil.getInstance(), MusicService.class);
-//        intent.putExtra(MainActivity.MEDIA_FILE_PATH, path);
-//        intent.putExtra(MusicService.IS_RESTART, isRestart);
-//        intent.putExtra(MusicService.ACTION_MODE,MusicService.ACTION_PLAY);
-//        ContextUtil.getInstance().startService(intent);
-
         if (!mLastFilePath.equals(filePath)) {  //说明换了歌曲
             try {
                 mMediaPlayer.stop();
@@ -223,7 +187,10 @@ public class MusicService extends Service implements MediaPlayer.OnCompletionLis
         MyLog.e("-- music stops");
     }
 
-    public void seekToTime(int seekTime) {  // seekTime is in microsecond
+    /**
+     *  seekTime is in microsecond
+     */
+    public void seekToTime(int seekTime) {
         if (!isPlaying()) {
             return;
         }
@@ -232,13 +199,14 @@ public class MusicService extends Service implements MediaPlayer.OnCompletionLis
         } else if (seekTime  > mMediaPlayer.getDuration()) {
             return;
         }
-
         mMediaPlayer.seekTo(seekTime);
         mIsPause = false;
     }
 
 
-
+    /**
+     * 会在bindService的时候传递这个类的对象过去，再那里可调用这个方法得到service
+     */
     public class LocalBinder extends Binder {
         public MusicService getService() {
             return MusicService.this;
@@ -246,8 +214,9 @@ public class MusicService extends Service implements MediaPlayer.OnCompletionLis
     }
 
 
-
-    //这次注册在了manifest里面。
+    /**
+     * 这种内部类必须要动态注册，否则会新建不了类。用来接收电话状态和短信通知
+     */
     public class MyPhoneStateListener extends BroadcastReceiver {
         public static final String SMS_RECEIVED_ACTION = "android.provider.Telephony.SMS_RECEIVED";
 
@@ -255,8 +224,10 @@ public class MusicService extends Service implements MediaPlayer.OnCompletionLis
         public void onReceive(Context context, Intent intent) {
             if(intent.getAction().equals(Intent.ACTION_NEW_OUTGOING_CALL)){ //打电话
                 pausePlay();
+                EventBus.getDefault().post(new MusicEvent(MusicEvent.ACTION_NEW_OUTGOING_CALL));
             } else if (SMS_RECEIVED_ACTION.equals(intent.getAction())) { //收到短信
                 pausePlay();
+                EventBus.getDefault().post(new MusicEvent(MusicEvent.SMS_RECEIVED));
                 try {
                     Thread.sleep(2000);
                 } catch (InterruptedException e) {
@@ -271,6 +242,7 @@ public class MusicService extends Service implements MediaPlayer.OnCompletionLis
                 switch (tm.getCallState()) {
                     case TelephonyManager.CALL_STATE_RINGING://标识当前是来电
                         pausePlay();
+                        EventBus.getDefault().post(new MusicEvent(MusicEvent.CALL_STATE_RINGING));
                         break;
                     case TelephonyManager.CALL_STATE_OFFHOOK://接通
 

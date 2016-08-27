@@ -4,7 +4,9 @@
     <color name="colorPrimaryDark">#303F9F</color>
     <color name="colorAccent">#FF4081</color>
     <color name="color_transparency">#00000000</color>
-    <color name="color_list_item">#FF000000</color>
+    <color name="color_list_item_title">#FF000000</color>
+    <color name="color_list_item_artist">#2e2e2e</color>
+    <color name="color_list_item_album">#2e2e2e</color>
     <color name="color_main_view_background">#ffffff</color>
     <color name="color_divider_bg">#0026ff</color>
     <color name="white">#ffffff</color>

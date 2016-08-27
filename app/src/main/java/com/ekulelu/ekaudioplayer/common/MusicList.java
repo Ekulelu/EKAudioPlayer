@@ -18,11 +18,11 @@ import com.ekulelu.ekaudioplayer.R;
 import java.util.ArrayList;
 
 
-/**
+/** RecyclerView封装完了，用MusicRecyclerView代替，这个类不用了。
  * Created by aahu on 2016/8/11 0011.
  */
-//TODO 进一步封装
 
+@Deprecated
 public class MusicList extends RecyclerView{
 
 
@@ -50,10 +50,9 @@ public class MusicList extends RecyclerView{
     }
 
     private void init(){
-
         setLayoutManager(new LinearLayoutManager(ContextUtil.getInstance()));
         setAdapter(new MusicListAdapter());
-        addItemDecoration(new DividerItemDecoration(DividerItemDecoration.VERTICAL_LIST));
+        addItemDecoration(new DividerItemDecoration(getContext(),DividerItemDecoration.VERTICAL_LIST));
         setItemAnimator( new DefaultItemAnimator());
     }
 
@@ -104,12 +103,6 @@ public class MusicList extends RecyclerView{
                 });
             }
 
-//            holder.mBtn.setOnClickListener(new OnClickListener() {
-//                @Override
-//                public void onClick(View v) {
-//                    MyToast.showShortText("button click");
-//                }
-//            });
         }
 
         @Override
